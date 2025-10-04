@@ -1,7 +1,6 @@
 package xyz.eclipseisoffline.multimod
 
 import me.modmuss50.mpp.ReleaseType
-import org.gradle.api.Action
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.api.provider.ListProperty

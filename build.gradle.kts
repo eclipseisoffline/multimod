@@ -1,5 +1,6 @@
 plugins {
-    `kotlin-dsl`
+    `java-gradle-plugin`
+    `maven-publish`
 }
 
 group = "xyz.eclipseisoffline"
@@ -19,7 +20,25 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.neogradle)
+    implementation(libs.moddev.gradle)
     implementation(libs.fabric.loom)
     implementation(libs.mod.publish.plugin)
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+gradlePlugin {
+    plugins {
+        create("multimod") {
+            id = "xyz.eclipseisoffline.multimod"
+            implementationClass = "xyz.eclipseisoffline.multimod.MultiModGradlePlugin"
+        }
+    }
+}
+
+publishing {
+
 }

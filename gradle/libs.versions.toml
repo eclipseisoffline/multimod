@@ -1,12 +1,9 @@
 [versions]
-neogradle = "7.0.192"
+moddev-gradle = "2.0.112"
 fabric-loom = "1.11-SNAPSHOT"
 mod-publish-plugin = "0.8.4"
 
 [libraries]
-neogradle = {group = "net.neoforged.gradle", name = "neoform",  version.ref = "neogradle"}
+moddev-gradle = {group = "net.neoforged", name = "moddev-gradle",  version.ref = "moddev-gradle"}
 fabric-loom = {group = "net.fabricmc", name = "fabric-loom", version.ref = "fabric-loom"}
 mod-publish-plugin = {group = "me.modmuss50", name = "mod-publish-plugin", version.ref = "mod-publish-plugin"}
-
-[plugins]
-maven-publish = {id = "maven-publish"}
