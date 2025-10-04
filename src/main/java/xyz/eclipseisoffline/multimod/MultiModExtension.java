@@ -5,6 +5,7 @@ import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.neoforged.moddevgradle.boot.ModDevPlugin;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
+import net.neoforged.moddevgradle.dsl.RunModel;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
@@ -19,10 +20,12 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
+import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Map;
 
 public class MultiModExtension {
@@ -48,7 +51,11 @@ public class MultiModExtension {
     private final Property<Dependency> fabricLoader;
     private final Property<Dependency> fabricApi;
 
+    private final Property<String> neoForgeVersion;
+    private final Property<String> supportedNeoForgeVersions;
+
     private final Property<String> supportedMinecraftVersions;
+    private final Property<String> neoForgeSupportedMinecraftVersions;
 
     private final Property<String> modrinthId;
     private final Property<ReleaseType> releaseType;
@@ -80,7 +87,11 @@ public class MultiModExtension {
         fabricLoader = factory.property(Dependency.class);
         fabricApi = factory.property(Dependency.class);
 
+        neoForgeVersion = factory.property(String.class);
+        supportedNeoForgeVersions = factory.property(String.class);
+
         supportedMinecraftVersions = factory.property(String.class);
+        neoForgeSupportedMinecraftVersions = factory.property(String.class);
 
         modrinthId = factory.property(String.class);
         releaseType = factory.property(ReleaseType.class);
@@ -144,8 +155,20 @@ public class MultiModExtension {
         return fabricApi;
     }
 
+    public Property<String> getNeoForgeVersion() {
+        return neoForgeVersion;
+    }
+
+    public Property<String> getSupportedNeoForgeVersions() {
+        return supportedNeoForgeVersions;
+    }
+
     public Property<String> getSupportedMinecraftVersions() {
         return supportedMinecraftVersions;
+    }
+
+    public Property<String> getNeoForgeSupportedMinecraftVersions() {
+        return neoForgeSupportedMinecraftVersions;
     }
 
     public Property<String> getModrinthId() {
@@ -204,30 +227,34 @@ public class MultiModExtension {
         javaExtension.setTargetCompatibility(javaVersion);
 
         TaskContainer tasks = target.getTasks();
-        tasks.named("processResources", ProcessResources.class).configure(task -> {
-            task.getInputs().property("mod_id", id.getOrElse(""));
-            task.getInputs().property("mod_name", name.getOrElse(""));
-            task.getInputs().property("mod_description", description.getOrElse(""));
-            task.getInputs().property("version", target.getVersion());
-            task.getInputs().property("minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse(""));
-            task.getInputs().property("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
-            task.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
-            task.getInputs().property("modrinth_id", modrinthId.getOrElse(""));
-            task.getInputs().property("github_repository", githubRepository.getOrElse(""));
+        tasks.withType(ProcessResources.class, resources -> {
+            resources.getInputs().property("mod_id", id.getOrElse(""));
+            resources.getInputs().property("mod_name", name.getOrElse(""));
+            resources.getInputs().property("mod_description", description.getOrElse(""));
+            resources.getInputs().property("version", target.getVersion());
+            resources.getInputs().property("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse(""));
+            resources.getInputs().property("minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse(""));
+            resources.getInputs().property("neoforge_minecraft_version", neoForgeSupportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]")).getOrElse(""));
+            resources.getInputs().property("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
+            resources.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
+            resources.getInputs().property("modrinth_id", modrinthId.getOrElse(""));
+            resources.getInputs().property("github_repository", githubRepository.getOrElse(""));
 
-            task.setFilteringCharset("UTF-8");
+            resources.setFilteringCharset("UTF-8");
 
-            task.filesMatching("fabric.mod.json", details -> {
-                details.expand(Map.of(
-                        "mod_id", id.getOrElse(""),
-                        "mod_name", name.getOrElse(""),
-                        "mod_description", description.getOrElse(""),
-                        "version", target.getVersion(),
-                        "minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse(""),
-                        "loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""),
-                        "fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""),
-                        "modrinth_id", modrinthId.getOrElse(""),
-                        "github_repository", githubRepository.getOrElse("")
+            resources.filesMatching(List.of("fabric.mod.json", "META-INF/neoforge.mods.toml"), details -> {
+                details.expand(Map.ofEntries(
+                        Map.entry("mod_id", id.getOrElse("")),
+                        Map.entry("mod_name", name.getOrElse("")),
+                        Map.entry("mod_description", description.getOrElse("")),
+                        Map.entry("version", target.getVersion()),
+                        Map.entry("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse("")),
+                        Map.entry("minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse("")),
+                        Map.entry("neoforge_minecraft_version", neoForgeSupportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]")).getOrElse("")),
+                        Map.entry("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse("")),
+                        Map.entry("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse("")),
+                        Map.entry("modrinth_id", modrinthId.getOrElse("")),
+                        Map.entry("github_repository", githubRepository.getOrElse(""))
                 ));
             });
         });
@@ -238,6 +265,18 @@ public class MultiModExtension {
             jar.getInputs().property("archivesName", baseExtension.getArchivesName());
 
             jar.from("LICENSE", copy -> copy.rename(license -> license + "_" + baseExtension.getArchivesName().get()));
+        });
+    }
+
+    private static void includeProject(@NotNull Project target, @NotNull Project include) {
+        target.getDependencies().add("compileOnly", include);
+
+        JavaPluginExtension includeJava = include.getExtensions().getByType(JavaPluginExtension.class);
+        includeJava.getSourceSets().forEach(set -> {
+            target.getTasks().withType(JavaCompile.class, task -> task.source(set.getAllSource()));
+            target.getTasks().named("sourcesJar", Jar.class, task -> task.from(set.getAllSource()));
+            target.getTasks().withType(Javadoc.class, task -> task.source(set.getAllJava()));
+            target.getTasks().withType(ProcessResources.class, task -> task.from(set.getResources()));
         });
     }
 
@@ -266,7 +305,9 @@ public class MultiModExtension {
         dependencies.add("minecraft", rootExtension.minecraft);
         dependencies.add("mappings", loom.layered(layers -> {
             layers.officialMojangMappings();
-            getParchment().set(rootExtension.parchment);
+            if (rootExtension.parchment.isPresent()) {
+                layers.parchment(rootExtension.parchment);
+            }
         }));
         dependencies.add("modImplementation", rootExtension.fabricLoader);
 
@@ -274,14 +315,28 @@ public class MultiModExtension {
             dependencies.add("modImplementation", rootExtension.fabricApi);
         }
 
-        dependencies.add("compileOnly", common);
+        includeProject(target, common);
+    }
 
-        JavaPluginExtension java = common.getExtensions().getByType(JavaPluginExtension.class);
-        java.getSourceSets().forEach(set -> {
-            target.getTasks().withType(JavaCompile.class, task -> task.source(set.getAllSource()));
-            target.getTasks().named("sourcesJar", Jar.class, task -> task.from(set.getAllSource()));
-            target.getTasks().withType(Javadoc.class, task -> task.source(set.getAllJava()));
-            target.getTasks().withType(ProcessResources.class, task -> task.from(set.getResources()));
-        });
+    public void neoForge(@NotNull Project common) {
+        MultiModExtension rootExtension = target.getRootProject().getExtensions().getByType(MultiModExtension.class);
+        rootExtension.baseConfiguration(target, "neoforge");
+
+        target.getPlugins().apply(ModDevPlugin.class);
+
+        NeoForgeExtension neoForge = target.getExtensions().getByType(NeoForgeExtension.class);
+
+        neoForge.setVersion(rootExtension.neoForgeVersion.get());
+        neoForge.getValidateAccessTransformers().set(true);
+
+        neoForge.getRuns().register("client", RunModel::client);
+        neoForge.getRuns().register("server", RunModel::server);
+
+        JavaPluginExtension java = target.getExtensions().getByType(JavaPluginExtension.class);
+        neoForge.getMods().register(rootExtension.id.get(), mod -> mod.sourceSet(java.getSourceSets().getByName("main")));
+
+        common.getTasks().withType(Test.class, test -> test.setEnabled(false));
+
+        includeProject(target, common);
     }
 }
