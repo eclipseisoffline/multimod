@@ -20,7 +20,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
-import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
@@ -208,6 +207,10 @@ public class MultiModExtension {
             maven.setUrl("https://libraries.minecraft.net");
         });
         target.getRepositories().maven(maven -> {
+            maven.setName("ParchmentMC");
+            maven.setUrl("https://maven.parchmentmc.org");
+        });
+        target.getRepositories().maven(maven -> {
             maven.setName("Fabric");
             maven.setUrl("https://maven.fabricmc.net");
         });
@@ -288,6 +291,7 @@ public class MultiModExtension {
 
         NeoForgeExtension neoForge = target.getExtensions().getByType(NeoForgeExtension.class);
         neoForge.setNeoFormVersion(rootExtension.minecraft.map(Dependency::getVersion).map(version -> version + "-" + rootExtension.neoFormTimestamp.get()).get());
+        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.parchment.map(Object::toString)));
 
         target.getDependencies().add("compileOnly", rootExtension.mixin);
         target.getDependencies().add("compileOnly", rootExtension.mixinExtras);
@@ -328,6 +332,7 @@ public class MultiModExtension {
 
         neoForge.setVersion(rootExtension.neoForgeVersion.get());
         neoForge.getValidateAccessTransformers().set(true);
+        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.parchment.map(Object::toString)));
 
         neoForge.getRuns().register("client", RunModel::client);
         neoForge.getRuns().register("server", RunModel::server);
@@ -335,7 +340,7 @@ public class MultiModExtension {
         JavaPluginExtension java = target.getExtensions().getByType(JavaPluginExtension.class);
         neoForge.getMods().register(rootExtension.id.get(), mod -> mod.sourceSet(java.getSourceSets().getByName("main")));
 
-        common.getTasks().withType(Test.class, test -> test.setEnabled(false));
+        target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
 
         includeProject(target, common);
     }
