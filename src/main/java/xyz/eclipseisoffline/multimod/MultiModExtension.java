@@ -1,12 +1,14 @@
 package xyz.eclipseisoffline.multimod;
 
 import me.modmuss50.mpp.ReleaseType;
+import net.fabricmc.loom.LoomGradlePlugin;
+import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.neoforged.moddevgradle.boot.ModDevPlugin;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.MinimalExternalModuleDependency;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
@@ -16,6 +18,7 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
@@ -23,6 +26,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 
 public class MultiModExtension {
+    public static final String MIXIN_VERSION = "0.8.7";
+    public static final String MIXIN_EXTRAS_VERSION = "0.5.0";
+    public static final String FABRIC_LOADER_VERSION = "0.17.2";
+
     private final Project target;
 
     private final Property<String> id;
@@ -31,12 +38,15 @@ public class MultiModExtension {
 
     private final Property<String> archivesBaseName;
 
-    private final Property<MinimalExternalModuleDependency> minecraft;
+    private final Property<Dependency> minecraft;
     private final Property<String> neoFormTimestamp;
-    private final Property<MinimalExternalModuleDependency> parchment;
+    private final Property<Dependency> parchment;
 
-    private final Property<MinimalExternalModuleDependency> fabricLoader;
-    private final Property<MinimalExternalModuleDependency> fabricApi;
+    private final Property<Dependency> mixin;
+    private final Property<Dependency> mixinExtras;
+
+    private final Property<Dependency> fabricLoader;
+    private final Property<Dependency> fabricApi;
 
     private final Property<String> supportedMinecraftVersions;
 
@@ -60,12 +70,15 @@ public class MultiModExtension {
 
         archivesBaseName = factory.property(String.class);
 
-        minecraft = factory.property(MinimalExternalModuleDependency.class);
+        minecraft = factory.property(Dependency.class);
         neoFormTimestamp = factory.property(String.class);
-        parchment = factory.property(MinimalExternalModuleDependency.class);
+        parchment = factory.property(Dependency.class);
 
-        fabricLoader = factory.property(MinimalExternalModuleDependency.class);
-        fabricApi = factory.property(MinimalExternalModuleDependency.class);
+        mixin = factory.property(Dependency.class);
+        mixinExtras = factory.property(Dependency.class);
+
+        fabricLoader = factory.property(Dependency.class);
+        fabricApi = factory.property(Dependency.class);
 
         supportedMinecraftVersions = factory.property(String.class);
 
@@ -78,6 +91,11 @@ public class MultiModExtension {
         mavenRepositories = factory.listProperty(MavenArtifactRepository.class);
 
         targetJavaVersion = factory.property(Integer.class);
+
+        mixin.convention(target.getDependencies().create("org.spongepowered:mixin:" + MIXIN_VERSION));
+        mixinExtras.convention(target.getDependencies().create("io.github.llamalad7:mixinextras-common:" + MIXIN_EXTRAS_VERSION));
+
+        fabricLoader.convention(target.getDependencies().create("net.fabricmc:fabric-loader:" + FABRIC_LOADER_VERSION));
 
         targetJavaVersion.convention(21);
     }
@@ -98,7 +116,7 @@ public class MultiModExtension {
         return archivesBaseName;
     }
 
-    public Property<MinimalExternalModuleDependency> getMinecraft() {
+    public Property<Dependency> getMinecraft() {
         return minecraft;
     }
 
@@ -106,15 +124,23 @@ public class MultiModExtension {
         return neoFormTimestamp;
     }
 
-    public Property<MinimalExternalModuleDependency> getParchment() {
+    public Property<Dependency> getParchment() {
         return parchment;
     }
 
-    public Property<MinimalExternalModuleDependency> getFabricLoader() {
+    public Property<Dependency> getMixin() {
+        return mixin;
+    }
+
+    public Property<Dependency> getMixinExtras() {
+        return mixinExtras;
+    }
+
+    public Property<Dependency> getFabricLoader() {
         return fabricLoader;
     }
 
-    public Property<MinimalExternalModuleDependency> getFabricApi() {
+    public Property<Dependency> getFabricApi() {
         return fabricApi;
     }
 
@@ -179,29 +205,29 @@ public class MultiModExtension {
 
         TaskContainer tasks = target.getTasks();
         tasks.named("processResources", ProcessResources.class).configure(task -> {
-            task.getInputs().property("mod_id", id);
-            task.getInputs().property("mod_name", name);
-            task.getInputs().property("mod_description", description);
+            task.getInputs().property("mod_id", id.getOrElse(""));
+            task.getInputs().property("mod_name", name.getOrElse(""));
+            task.getInputs().property("mod_description", description.getOrElse(""));
             task.getInputs().property("version", target.getVersion());
-            task.getInputs().property("minecraft_version", supportedMinecraftVersions);
-            task.getInputs().property("loader_version", fabricLoader.map(Dependency::getVersion));
-            task.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion));
-            task.getInputs().property("modrinth_id", modrinthId);
-            task.getInputs().property("github_repository", githubRepository);
+            task.getInputs().property("minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse(""));
+            task.getInputs().property("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
+            task.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
+            task.getInputs().property("modrinth_id", modrinthId.getOrElse(""));
+            task.getInputs().property("github_repository", githubRepository.getOrElse(""));
 
             task.setFilteringCharset("UTF-8");
 
             task.filesMatching("fabric.mod.json", details -> {
                 details.expand(Map.of(
-                        "mod_id", id,
-                        "mod_name", name,
-                        "mod_description", description,
+                        "mod_id", id.getOrElse(""),
+                        "mod_name", name.getOrElse(""),
+                        "mod_description", description.getOrElse(""),
                         "version", target.getVersion(),
-                        "minecraft_version", supportedMinecraftVersions,
-                        "loader_version", fabricLoader.map(Dependency::getVersion),
-                        "fabric_api_version", fabricApi.map(Dependency::getVersion),
-                        "modrinth_id", modrinthId,
-                        "github_repository", githubRepository
+                        "minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse(""),
+                        "loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""),
+                        "fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""),
+                        "modrinth_id", modrinthId.getOrElse(""),
+                        "github_repository", githubRepository.getOrElse("")
                 ));
             });
         });
@@ -223,5 +249,39 @@ public class MultiModExtension {
 
         NeoForgeExtension neoForge = target.getExtensions().getByType(NeoForgeExtension.class);
         neoForge.setNeoFormVersion(rootExtension.minecraft.map(Dependency::getVersion).map(version -> version + "-" + rootExtension.neoFormTimestamp.get()).get());
+
+        target.getDependencies().add("compileOnly", rootExtension.mixin);
+        target.getDependencies().add("compileOnly", rootExtension.mixinExtras);
+    }
+
+    public void fabric(@NotNull Project common) {
+        MultiModExtension rootExtension = target.getRootProject().getExtensions().getByType(MultiModExtension.class);
+        rootExtension.baseConfiguration(target, "fabric");
+
+        target.getPlugins().apply(LoomGradlePlugin.class);
+
+        LoomGradleExtensionAPI loom = target.getExtensions().getByType(LoomGradleExtensionAPI.class);
+
+        DependencyHandler dependencies = target.getDependencies();
+        dependencies.add("minecraft", rootExtension.minecraft);
+        dependencies.add("mappings", loom.layered(layers -> {
+            layers.officialMojangMappings();
+            getParchment().set(rootExtension.parchment);
+        }));
+        dependencies.add("modImplementation", rootExtension.fabricLoader);
+
+        if (rootExtension.fabricApi.isPresent()) {
+            dependencies.add("modImplementation", rootExtension.fabricApi);
+        }
+
+        dependencies.add("compileOnly", common);
+
+        JavaPluginExtension java = common.getExtensions().getByType(JavaPluginExtension.class);
+        java.getSourceSets().forEach(set -> {
+            target.getTasks().withType(JavaCompile.class, task -> task.source(set.getAllSource()));
+            target.getTasks().named("sourcesJar", Jar.class, task -> task.from(set.getAllSource()));
+            target.getTasks().withType(Javadoc.class, task -> task.source(set.getAllJava()));
+            target.getTasks().withType(ProcessResources.class, task -> task.from(set.getResources()));
+        });
     }
 }
