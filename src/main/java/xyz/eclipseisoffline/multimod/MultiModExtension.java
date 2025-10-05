@@ -1,28 +1,40 @@
 package xyz.eclipseisoffline.multimod;
 
-import me.modmuss50.mpp.ReleaseType;
+import me.modmuss50.mpp.ModPublishExtension;
+import me.modmuss50.mpp.MppPlugin;
+import me.modmuss50.mpp.PublishOptions;
+import me.modmuss50.mpp.platforms.github.GithubOptions;
+import me.modmuss50.mpp.platforms.modrinth.ModrinthOptions;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
+import net.fabricmc.loom.task.RemapJarTask;
 import net.neoforged.moddevgradle.boot.ModDevPlugin;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import org.gradle.api.Action;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
+import org.gradle.api.publish.PublishingExtension;
+import org.gradle.api.publish.maven.MavenPublication;
+import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -56,15 +68,15 @@ public class MultiModExtension {
     private final Property<String> supportedMinecraftVersions;
     private final Property<String> neoForgeSupportedMinecraftVersions;
 
-    private final Property<String> modrinthId;
-    private final Property<ReleaseType> releaseType;
-    private final Property<String> releaseVersions;
-    private final Property<String> githubRepository;
-    private final Property<String> gitBranch;
+    private final Property<PublishOptions> modPublishOptions;
+    private final Property<ModrinthOptions> modrinthOptions;
+    private final Property<GithubOptions> githubOptions;
 
     private final ListProperty<MavenArtifactRepository> mavenRepositories;
 
     private final Property<Integer> targetJavaVersion;
+
+    private boolean modPublishingLazilyConfigured = false;
 
     public MultiModExtension(@NotNull Project target) {
         this.target = target;
@@ -92,11 +104,9 @@ public class MultiModExtension {
         supportedMinecraftVersions = factory.property(String.class);
         neoForgeSupportedMinecraftVersions = factory.property(String.class);
 
-        modrinthId = factory.property(String.class);
-        releaseType = factory.property(ReleaseType.class);
-        releaseVersions = factory.property(String.class);
-        githubRepository = factory.property(String.class);
-        gitBranch = factory.property(String.class);
+        modPublishOptions = factory.property(PublishOptions.class);
+        modrinthOptions = factory.property(ModrinthOptions.class);
+        githubOptions = factory.property(GithubOptions.class);
 
         mavenRepositories = factory.listProperty(MavenArtifactRepository.class);
 
@@ -170,24 +180,47 @@ public class MultiModExtension {
         return neoForgeSupportedMinecraftVersions;
     }
 
-    public Property<String> getModrinthId() {
-        return modrinthId;
+    private Provider<ModPublishExtension> modPublishProvider() {
+        return target.provider(() -> target.getExtensions().findByType(ModPublishExtension.class));
     }
 
-    public Property<ReleaseType> getReleaseType() {
-        return releaseType;
+    public Property<PublishOptions> getModPublishOptions() {
+        return modPublishOptions;
     }
 
-    public Property<String> getReleaseVersions() {
-        return releaseVersions;
+    public void modPublishOptions(Action<PublishOptions> action) {
+        modPublishOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.publishOptions(options -> {
+            // Bit cursed, but we have to unset all conventions here, since the publishOptions function
+            // sets conventions to default to the extension values, but this later leads to a circular evaluation
+            // when applying this to the extension
+            // Also see further below
+            options.getFile().unsetConvention();
+            options.getVersion().unsetConvention();
+            options.getChangelog().unsetConvention();
+            options.getType().unsetConvention();
+            options.getDisplayName().unsetConvention();
+            options.getModLoaders().unsetConvention();
+            options.getAdditionalFiles().unsetConvention();
+            options.getMaxRetries().unsetConvention();
+            action.execute(options);
+        })));
+        modPublishingLazilyConfigured = true;
     }
 
-    public Property<String> getGithubRepository() {
-        return githubRepository;
+    public Property<ModrinthOptions> getModrinthOptions() {
+        return modrinthOptions;
     }
 
-    public Property<String> getGitBranch() {
-        return gitBranch;
+    public void modrinthOptions(Action<ModrinthOptions> action) {
+        modrinthOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.modrinthOptions(action)));
+    }
+
+    public Property<GithubOptions> getGithubOptions() {
+        return githubOptions;
+    }
+
+    public void githubOptions(Action<GithubOptions> action) {
+        githubOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.githubOptions(action)));
     }
 
     public ListProperty<MavenArtifactRepository> getMavenRepositories() {
@@ -196,6 +229,10 @@ public class MultiModExtension {
 
     public Property<Integer> getTargetJavaVersion() {
         return targetJavaVersion;
+    }
+
+    private Provider<String> getArtifactId(String type) {
+        return archivesBaseName.map(s -> s + "-" + type);
     }
 
     private void baseConfiguration(@NotNull Project target, String type) {
@@ -220,7 +257,7 @@ public class MultiModExtension {
         });
 
         BasePluginExtension baseExtension = target.getExtensions().getByType(BasePluginExtension.class);
-        baseExtension.getArchivesName().set(archivesBaseName.map(s -> s + "-" + type));
+        baseExtension.getArchivesName().set(getArtifactId(type));
 
         JavaPluginExtension javaExtension = target.getExtensions().getByType(JavaPluginExtension.class);
         javaExtension.withSourcesJar();
@@ -240,8 +277,8 @@ public class MultiModExtension {
             resources.getInputs().property("neoforge_minecraft_version", neoForgeSupportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]")).getOrElse(""));
             resources.getInputs().property("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
             resources.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
-            resources.getInputs().property("modrinth_id", modrinthId.getOrElse(""));
-            resources.getInputs().property("github_repository", githubRepository.getOrElse(""));
+            resources.getInputs().property("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse(""));
+            resources.getInputs().property("github_repository", githubOptions.flatMap(GithubOptions::getRepository).getOrElse(""));
 
             resources.setFilteringCharset("UTF-8");
 
@@ -256,8 +293,8 @@ public class MultiModExtension {
                         Map.entry("neoforge_minecraft_version", neoForgeSupportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]")).getOrElse("")),
                         Map.entry("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse("")),
                         Map.entry("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse("")),
-                        Map.entry("modrinth_id", modrinthId.getOrElse("")),
-                        Map.entry("github_repository", githubRepository.getOrElse(""))
+                        Map.entry("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse("")),
+                        Map.entry("github_repository", githubOptions.flatMap(GithubOptions::getRepository).getOrElse(""))
                 ));
             });
         });
@@ -269,6 +306,35 @@ public class MultiModExtension {
 
             jar.from("LICENSE", copy -> copy.rename(license -> license + "_" + baseExtension.getArchivesName().get()));
         });
+    }
+
+    private void trySetupPublishing(@NotNull Project subproject, String type, @Nullable String modLoader, @Nullable Provider<RegularFile> modFile) {
+        PublishingExtension publishing = target.getExtensions().findByType(PublishingExtension.class);
+        if (publishing != null) {
+            publishing.getPublications().register(type, MavenPublication.class, publication -> {
+                publication.setArtifactId(getArtifactId(type).get());
+                publication.from(subproject.getComponents().getByName("java"));
+            });
+        }
+
+        ModPublishExtension modPublish = target.getExtensions().findByType(ModPublishExtension.class);
+        if (modPublish != null && modLoader != null && modFile != null) {
+            if (modrinthOptions.isPresent()) {
+                modPublish.modrinth("modrinth-" + type, modrinth -> {
+                    modrinth.from(modrinthOptions.get());
+                    modrinth.getFile().set(modFile);
+                    modrinth.getModLoaders().add(modLoader);
+                    modrinth.getDisplayName().convention(target.getName() + "-" + type + " " + target.getVersion());
+                });
+            }
+            if (githubOptions.isPresent()) {
+                modPublish.github("github-" + type, github -> {
+                    github.from(githubOptions.get());
+                    github.getFile().set(modFile);
+                    github.getDisplayName().convention(target.getName() + "-" + type + " " + target.getVersion());
+                });
+            }
+        }
     }
 
     private static void includeProject(@NotNull Project target, @NotNull Project include) {
@@ -295,6 +361,8 @@ public class MultiModExtension {
 
         target.getDependencies().add("compileOnly", rootExtension.mixin);
         target.getDependencies().add("compileOnly", rootExtension.mixinExtras);
+
+        rootExtension.trySetupPublishing(target, "common", null, null);
     }
 
     public void fabric(@NotNull Project common) {
@@ -320,6 +388,7 @@ public class MultiModExtension {
         }
 
         includeProject(target, common);
+        rootExtension.trySetupPublishing(target, "fabric", "fabric", target.getTasks().named("remapJar", RemapJarTask.class).flatMap(RemapJarTask::getArchiveFile));
     }
 
     public void neoForge(@NotNull Project common) {
@@ -343,5 +412,44 @@ public class MultiModExtension {
         target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
 
         includeProject(target, common);
+        rootExtension.trySetupPublishing(target, "neoforge", "neoforge", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
+    }
+
+    public void setupPublishing() {
+        target.getPlugins().apply(MavenPublishPlugin.class);
+
+        PublishingExtension publishing = target.getExtensions().getByType(PublishingExtension.class);
+        publishing.getRepositories().addAll(mavenRepositories.get());
+
+        if (modPublishingLazilyConfigured) {
+            target.getPlugins().apply(MppPlugin.class);
+
+            ModPublishExtension modPublish = target.getExtensions().getByType(ModPublishExtension.class);
+            // Bit cursed, but we have to manually set all properties here instead of using .from, since .from
+            // sets conventions instead of actual properties, which leads to a circular evaluation
+            // We also can't override the convention, so we have to check if an actual value was set with isPresent
+            setIfPresent(modPublish.getFile(), modPublishOptions.map(PublishOptions::getFile));
+            setIfPresent(modPublish.getVersion(), modPublishOptions.map(PublishOptions::getVersion));
+            setIfPresent(modPublish.getChangelog(), modPublishOptions.map(PublishOptions::getChangelog));
+            setIfPresent(modPublish.getType(), modPublishOptions.map(PublishOptions::getType));
+            setIfPresent(modPublish.getDisplayName(), modPublishOptions.map(PublishOptions::getDisplayName));
+            setIfPresent(modPublish.getModLoaders(), modPublishOptions.map(PublishOptions::getModLoaders));
+            //setIfPresent(modPublish.getAdditionalFiles(), modPublishOptions.map(PublishOptions::getAdditionalFiles)); TODO
+            setIfPresent(modPublish.getMaxRetries(), modPublishOptions.map(PublishOptions::getMaxRetries));
+        }
+    }
+
+    private static <T> void setIfPresent(Property<T> property, Provider<Property<T>> other) {
+        Property<T> otherProperty = other.getOrNull();
+        if (otherProperty != null && otherProperty.isPresent()) {
+            property.set(otherProperty);
+        }
+    }
+
+    private static <T> void setIfPresent(ListProperty<T> property, Provider<ListProperty<T>> other) {
+        ListProperty<T> otherProperty = other.getOrNull();
+        if (otherProperty != null && otherProperty.isPresent()) {
+            property.set(otherProperty);
+        }
     }
 }
