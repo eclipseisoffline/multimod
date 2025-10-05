@@ -7,6 +7,7 @@ import me.modmuss50.mpp.platforms.github.GithubOptions;
 import me.modmuss50.mpp.platforms.modrinth.ModrinthOptions;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
+import net.fabricmc.loom.api.fabricapi.FabricApiExtension;
 import net.fabricmc.loom.task.RemapJarTask;
 import net.neoforged.moddevgradle.boot.ModDevPlugin;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
@@ -39,61 +40,47 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public class MultiModExtension {
-    public static final String MIXIN_VERSION = "0.8.7";
-    public static final String MIXIN_EXTRAS_VERSION = "0.5.0";
     public static final String FABRIC_LOADER_VERSION = "0.17.2";
 
     private final Project target;
 
-    private final Property<String> id;
-    private final Property<String> name;
-    private final Property<String> description;
+    public final MultiModSettings settings;
 
-    private final Property<String> archivesBaseName;
+    public final Property<String> id;
+    public final Property<String> name;
+    public final Property<String> description;
 
-    private final Property<Dependency> minecraft;
-    private final Property<String> neoFormTimestamp;
-    private final Property<Dependency> parchment;
+    public final Property<String> archivesBaseName;
 
-    private final Property<Dependency> mixin;
-    private final Property<Dependency> mixinExtras;
+    public final MinecraftSettings minecraft;
 
-    private final Property<Dependency> fabricLoader;
-    private final Property<Dependency> fabricApi;
+    public final Property<Dependency> fabricLoader;
+    public final Property<Dependency> fabricApi;
 
-    private final Property<String> neoForgeVersion;
-    private final Property<String> supportedNeoForgeVersions;
+    public final Property<String> neoForgeVersion;
+    public final Property<String> supportedNeoForgeVersions;
 
-    private final Property<String> supportedMinecraftVersions;
-    private final Property<String> neoForgeSupportedMinecraftVersions;
+    public final Property<PublishOptions> modPublishOptions;
+    public final Property<ModrinthOptions> modrinthOptions;
+    public final Property<GithubOptions> githubOptions;
 
-    private final Property<PublishOptions> modPublishOptions;
-    private final Property<ModrinthOptions> modrinthOptions;
-    private final Property<GithubOptions> githubOptions;
-
-    private final ListProperty<MavenArtifactRepository> mavenRepositories;
-
-    private final Property<Integer> targetJavaVersion;
-
-    private boolean modPublishingLazilyConfigured = false;
+    public final Property<Integer> targetJavaVersion;
 
     public MultiModExtension(@NotNull Project target) {
         this.target = target;
 
         ObjectFactory factory = target.getObjects();
+        settings = new MultiModSettings(factory);
+
         id = factory.property(String.class);
         name = factory.property(String.class);
         description = factory.property(String.class);
 
         archivesBaseName = factory.property(String.class);
 
-        minecraft = factory.property(Dependency.class);
-        neoFormTimestamp = factory.property(String.class);
-        parchment = factory.property(Dependency.class);
-
-        mixin = factory.property(Dependency.class);
-        mixinExtras = factory.property(Dependency.class);
+        minecraft = new MinecraftSettings(target);
 
         fabricLoader = factory.property(Dependency.class);
         fabricApi = factory.property(Dependency.class);
@@ -101,134 +88,81 @@ public class MultiModExtension {
         neoForgeVersion = factory.property(String.class);
         supportedNeoForgeVersions = factory.property(String.class);
 
-        supportedMinecraftVersions = factory.property(String.class);
-        neoForgeSupportedMinecraftVersions = factory.property(String.class);
-
         modPublishOptions = factory.property(PublishOptions.class);
         modrinthOptions = factory.property(ModrinthOptions.class);
         githubOptions = factory.property(GithubOptions.class);
 
-        mavenRepositories = factory.listProperty(MavenArtifactRepository.class);
-
         targetJavaVersion = factory.property(Integer.class);
 
-        mixin.convention(target.getDependencies().create("org.spongepowered:mixin:" + MIXIN_VERSION));
-        mixinExtras.convention(target.getDependencies().create("io.github.llamalad7:mixinextras-common:" + MIXIN_EXTRAS_VERSION));
-
+        name.convention(target.getName());
+        description.convention("");
+        archivesBaseName.convention(id);
         fabricLoader.convention(target.getDependencies().create("net.fabricmc:fabric-loader:" + FABRIC_LOADER_VERSION));
-
+        supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "]"));
         targetJavaVersion.convention(21);
     }
 
-    public Property<String> getId() {
-        return id;
+    public void settings(Action<? super MultiModSettings> action) {
+        action.execute(settings);
     }
 
-    public Property<String> getName() {
-        return name;
+    public void minecraft(String version) {
+        minecraft(target.getDependencies().create("com.mojang:minecraft:" + version));
     }
 
-    public Property<String> getDescription() {
-        return description;
+    public void minecraft(Dependency dependency) {
+        minecraft.minecraft.set(dependency);
     }
 
-    public Property<String> getArchivesBaseName() {
-        return archivesBaseName;
+    public void minecraft(Provider<? extends Dependency> dependency) {
+        minecraft.minecraft.set(dependency);
     }
 
-    public Property<Dependency> getMinecraft() {
-        return minecraft;
-    }
-
-    public Property<String> getNeoFormTimestamp() {
-        return neoFormTimestamp;
-    }
-
-    public Property<Dependency> getParchment() {
-        return parchment;
-    }
-
-    public Property<Dependency> getMixin() {
-        return mixin;
-    }
-
-    public Property<Dependency> getMixinExtras() {
-        return mixinExtras;
-    }
-
-    public Property<Dependency> getFabricLoader() {
-        return fabricLoader;
-    }
-
-    public Property<Dependency> getFabricApi() {
-        return fabricApi;
-    }
-
-    public Property<String> getNeoForgeVersion() {
-        return neoForgeVersion;
-    }
-
-    public Property<String> getSupportedNeoForgeVersions() {
-        return supportedNeoForgeVersions;
-    }
-
-    public Property<String> getSupportedMinecraftVersions() {
-        return supportedMinecraftVersions;
-    }
-
-    public Property<String> getNeoForgeSupportedMinecraftVersions() {
-        return neoForgeSupportedMinecraftVersions;
+    public void minecraft(Action<? super MinecraftSettings> action) {
+        action.execute(minecraft);
     }
 
     private Provider<ModPublishExtension> modPublishProvider() {
         return target.provider(() -> target.getExtensions().findByType(ModPublishExtension.class));
     }
 
-    public Property<PublishOptions> getModPublishOptions() {
-        return modPublishOptions;
-    }
+    public void modPublishOptions(Action<? super PublishOptions> action) {
+        target.getPlugins().apply(MppPlugin.class);
 
-    public void modPublishOptions(Action<PublishOptions> action) {
-        modPublishOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.publishOptions(options -> {
-            // Bit cursed, but we have to unset all conventions here, since the publishOptions function
-            // sets conventions to default to the extension values, but this later leads to a circular evaluation
-            // when applying this to the extension
-            // Also see further below
-            options.getFile().unsetConvention();
-            options.getVersion().unsetConvention();
-            options.getChangelog().unsetConvention();
-            options.getType().unsetConvention();
-            options.getDisplayName().unsetConvention();
-            options.getModLoaders().unsetConvention();
-            options.getAdditionalFiles().unsetConvention();
-            options.getMaxRetries().unsetConvention();
-            action.execute(options);
-        })));
-        modPublishingLazilyConfigured = true;
-    }
+        PublishOptions options = target.getObjects().newInstance(PublishOptions.class);
+        action.execute(options);
 
-    public Property<ModrinthOptions> getModrinthOptions() {
-        return modrinthOptions;
+        ModPublishExtension modPublish = target.getExtensions().getByType(ModPublishExtension.class);
+        // Bit cursed, but we have to manually set all properties here instead of using .from, since .from
+        // sets conventions instead of actual properties, which leads to overriding things we don't want to override
+        // We also can't override the convention, so we have to check if an actual value was set with isPresent
+        setIfPresent(modPublish.getFile(), options.getFile());
+        setIfPresent(modPublish.getVersion(), options.getVersion());
+        setIfPresent(modPublish.getChangelog(), options.getChangelog());
+        setIfPresent(modPublish.getType(), options.getType());
+        setIfPresent(modPublish.getDisplayName(), options.getDisplayName());
+        setIfPresent(modPublish.getModLoaders(), options.getModLoaders());
+        //setIfPresent(modPublish.getAdditionalFiles(), modPublishOptions.map(PublishOptions::getAdditionalFiles)); TODO
+        setIfPresent(modPublish.getMaxRetries(), options.getMaxRetries());
     }
 
     public void modrinthOptions(Action<ModrinthOptions> action) {
         modrinthOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.modrinthOptions(action)));
     }
 
-    public Property<GithubOptions> getGithubOptions() {
-        return githubOptions;
-    }
-
     public void githubOptions(Action<GithubOptions> action) {
         githubOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.githubOptions(action)));
     }
 
-    public ListProperty<MavenArtifactRepository> getMavenRepositories() {
-        return mavenRepositories;
+    public void maven(Action<? super MavenArtifactRepository> action) {
+        target.getPlugins().apply(MavenPublishPlugin.class);
+        PublishingExtension publishing = target.getExtensions().getByType(PublishingExtension.class);
+        publishing.getRepositories().maven(action);
     }
 
-    public Property<Integer> getTargetJavaVersion() {
-        return targetJavaVersion;
+    public void mavenLocal() {
+        target.getPlugins().apply(MavenPublishPlugin.class);
+        target.getExtensions().getByType(PublishingExtension.class).getRepositories().mavenLocal();
     }
 
     private Provider<String> getArtifactId(String type) {
@@ -237,74 +171,67 @@ public class MultiModExtension {
 
     private void baseConfiguration(@NotNull Project target, String type) {
         target.getPlugins().apply(JavaLibraryPlugin.class);
-
-        target.getRepositories().mavenCentral();
-        target.getRepositories().maven(maven -> {
-            maven.setName("Mojang");
-            maven.setUrl("https://libraries.minecraft.net");
-        });
-        target.getRepositories().maven(maven -> {
-            maven.setName("ParchmentMC");
-            maven.setUrl("https://maven.parchmentmc.org");
-        });
-        target.getRepositories().maven(maven -> {
-            maven.setName("Fabric");
-            maven.setUrl("https://maven.fabricmc.net");
-        });
-        target.getRepositories().maven(maven -> {
-            maven.setName("NeoForged");
-            maven.setUrl("https://maven.neoforged.net/releases");
-        });
+        settings.defaultRepositories.execute(target.getRepositories());
 
         BasePluginExtension baseExtension = target.getExtensions().getByType(BasePluginExtension.class);
         baseExtension.getArchivesName().set(getArtifactId(type));
 
         JavaPluginExtension javaExtension = target.getExtensions().getByType(JavaPluginExtension.class);
-        javaExtension.withSourcesJar();
+        if (settings.buildSourcesJar.get()) {
+            javaExtension.withSourcesJar();
+        }
 
-        JavaVersion javaVersion = JavaVersion.toVersion(targetJavaVersion.get());
-        javaExtension.setSourceCompatibility(javaVersion);
-        javaExtension.setTargetCompatibility(javaVersion);
+        if (settings.setJavaVersion.get()) {
+            JavaVersion javaVersion = JavaVersion.toVersion(targetJavaVersion.get());
+            javaExtension.setSourceCompatibility(javaVersion);
+            javaExtension.setTargetCompatibility(javaVersion);
+        }
 
         TaskContainer tasks = target.getTasks();
-        tasks.withType(ProcessResources.class, resources -> {
-            resources.getInputs().property("mod_id", id.getOrElse(""));
-            resources.getInputs().property("mod_name", name.getOrElse(""));
-            resources.getInputs().property("mod_description", description.getOrElse(""));
-            resources.getInputs().property("version", target.getVersion());
-            resources.getInputs().property("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse(""));
-            resources.getInputs().property("minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse(""));
-            resources.getInputs().property("neoforge_minecraft_version", neoForgeSupportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]")).getOrElse(""));
-            resources.getInputs().property("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
-            resources.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
-            resources.getInputs().property("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse(""));
-            resources.getInputs().property("github_repository", githubOptions.flatMap(GithubOptions::getRepository).getOrElse(""));
+        if (settings.configureResources.get()) {
+            tasks.withType(ProcessResources.class, resources -> {
+                resources.getInputs().property("mod_id", id.getOrElse(""));
+                resources.getInputs().property("mod_name", name.getOrElse(""));
+                resources.getInputs().property("mod_description", description.getOrElse(""));
+                resources.getInputs().property("version", target.getVersion());
+                resources.getInputs().property("minecraft_version", minecraft.supportedMinecraftVersions.getOrElse(""));
+                resources.getInputs().property("neoforge_minecraft_version", minecraft.neoForgeSupportedMinecraftVersions.getOrElse(""));
+                resources.getInputs().property("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse(""));
+                resources.getInputs().property("fabric_loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
+                resources.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
+                resources.getInputs().property("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse(""));
+                resources.getInputs().property("github_repository", githubOptions.flatMap(GithubOptions::getRepository).getOrElse(""));
 
-            resources.setFilteringCharset("UTF-8");
+                resources.setFilteringCharset("UTF-8");
 
-            resources.filesMatching(List.of("fabric.mod.json", "META-INF/neoforge.mods.toml"), details -> {
-                details.expand(Map.ofEntries(
-                        Map.entry("mod_id", id.getOrElse("")),
-                        Map.entry("mod_name", name.getOrElse("")),
-                        Map.entry("mod_description", description.getOrElse("")),
-                        Map.entry("version", target.getVersion()),
-                        Map.entry("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse("")),
-                        Map.entry("minecraft_version", supportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion)).getOrElse("")),
-                        Map.entry("neoforge_minecraft_version", neoForgeSupportedMinecraftVersions.orElse(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]")).getOrElse("")),
-                        Map.entry("loader_version", fabricLoader.map(Dependency::getVersion).getOrElse("")),
-                        Map.entry("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse("")),
-                        Map.entry("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse("")),
-                        Map.entry("github_repository", githubOptions.flatMap(GithubOptions::getRepository).getOrElse(""))
-                ));
+                resources.filesMatching(List.of("fabric.mod.json", "META-INF/neoforge.mods.toml"), details -> {
+                    details.expand(Map.ofEntries(
+                            Map.entry("mod_id", id.getOrElse("")),
+                            Map.entry("mod_name", name.getOrElse("")),
+                            Map.entry("mod_description", description.getOrElse("")),
+                            Map.entry("version", target.getVersion()),
+                            Map.entry("minecraft_version", minecraft.supportedMinecraftVersions.getOrElse("")),
+                            Map.entry("neoforge_minecraft_version", minecraft.neoForgeSupportedMinecraftVersions.getOrElse("")),
+                            Map.entry("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse("")),
+                            Map.entry("fabric_loader_version", fabricLoader.map(Dependency::getVersion).getOrElse("")),
+                            Map.entry("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse("")),
+                            Map.entry("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse("")),
+                            Map.entry("github_repository", githubOptions.flatMap(GithubOptions::getRepository).getOrElse(""))
+                    ));
+                });
             });
-        });
+        }
 
-        tasks.withType(JavaCompile.class, compile -> compile.getOptions().getRelease().set(targetJavaVersion));
+        if (settings.setJavaVersion.get()) {
+            tasks.withType(JavaCompile.class, compile -> compile.getOptions().getRelease().set(targetJavaVersion));
+        }
 
         tasks.withType(Jar.class, jar -> {
-            jar.getInputs().property("archivesName", baseExtension.getArchivesName());
+            jar.getInputs().property("archivesName", baseExtension.getArchivesName().get());
 
-            jar.from("LICENSE", copy -> copy.rename(license -> license + "_" + baseExtension.getArchivesName().get()));
+            if (settings.includeLicenseInJar.get()) {
+                jar.from("LICENSE", copy -> copy.rename(license -> license + "_" + baseExtension.getArchivesName().get()));
+            }
         });
     }
 
@@ -324,14 +251,14 @@ public class MultiModExtension {
                     modrinth.from(modrinthOptions.get());
                     modrinth.getFile().set(modFile);
                     modrinth.getModLoaders().add(modLoader);
-                    modrinth.getDisplayName().convention(target.getName() + "-" + type + " " + target.getVersion());
+                    modrinth.getDisplayName().convention(name.get() + "-" + type + " " + target.getVersion());
                 });
             }
             if (githubOptions.isPresent()) {
                 modPublish.github("github-" + type, github -> {
                     github.from(githubOptions.get());
                     github.getFile().set(modFile);
-                    github.getDisplayName().convention(target.getName() + "-" + type + " " + target.getVersion());
+                    github.getDisplayName().convention(name.get() + "-" + type + " " + target.getVersion());
                 });
             }
         }
@@ -349,24 +276,38 @@ public class MultiModExtension {
         });
     }
 
-    public void common() {
-        MultiModExtension rootExtension = target.getRootProject().getExtensions().getByType(MultiModExtension.class);
+    public void common(Project root, Action<? super NeoForgeExtension> action) {
+        MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "common");
 
         target.getPlugins().apply(ModDevPlugin.class);
 
         NeoForgeExtension neoForge = target.getExtensions().getByType(NeoForgeExtension.class);
-        neoForge.setNeoFormVersion(rootExtension.minecraft.map(Dependency::getVersion).map(version -> version + "-" + rootExtension.neoFormTimestamp.get()).get());
-        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.parchment.map(Object::toString)));
+        neoForge.setNeoFormVersion(rootExtension.minecraft.minecraft.map(Dependency::getVersion).map(version -> version + "-" + rootExtension.minecraft.neoFormTimestamp.get()).get());
+        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.minecraft.parchment.map(Object::toString)));
 
-        target.getDependencies().add("compileOnly", rootExtension.mixin);
-        target.getDependencies().add("compileOnly", rootExtension.mixinExtras);
+        target.getDependencies().add("compileOnly", rootExtension.minecraft.mixin);
+        target.getDependencies().add("compileOnly", rootExtension.minecraft.mixinExtras);
 
         rootExtension.trySetupPublishing(target, "common", null, null);
+
+        action.execute(neoForge);
     }
 
-    public void fabric(@NotNull Project common) {
-        MultiModExtension rootExtension = target.getRootProject().getExtensions().getByType(MultiModExtension.class);
+    public void commonWithRoot(Project root) {
+        common(root, neoForge -> {});
+    }
+
+    public void common(Action<? super NeoForgeExtension> neoForgeAction) {
+        common(target.getRootProject(), neoForgeAction);
+    }
+
+    public void common() {
+        common(neoForge -> {});
+    }
+
+    public void fabric(@NotNull Project root, @Nullable Project common, Action<? super LoomAndFabricApiConfigurer> action) {
+        MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "fabric");
 
         target.getPlugins().apply(LoomGradlePlugin.class);
@@ -374,11 +315,11 @@ public class MultiModExtension {
         LoomGradleExtensionAPI loom = target.getExtensions().getByType(LoomGradleExtensionAPI.class);
 
         DependencyHandler dependencies = target.getDependencies();
-        dependencies.add("minecraft", rootExtension.minecraft);
+        dependencies.add("minecraft", rootExtension.minecraft.minecraft);
         dependencies.add("mappings", loom.layered(layers -> {
             layers.officialMojangMappings();
-            if (rootExtension.parchment.isPresent()) {
-                layers.parchment(rootExtension.parchment);
+            if (rootExtension.minecraft.parchment.isPresent()) {
+                layers.parchment(rootExtension.minecraft.parchment);
             }
         }));
         dependencies.add("modImplementation", rootExtension.fabricLoader);
@@ -387,12 +328,55 @@ public class MultiModExtension {
             dependencies.add("modImplementation", rootExtension.fabricApi);
         }
 
-        includeProject(target, common);
+        if (common != null) {
+            includeProject(target, common);
+        }
         rootExtension.trySetupPublishing(target, "fabric", "fabric", target.getTasks().named("remapJar", RemapJarTask.class).flatMap(RemapJarTask::getArchiveFile));
+
+        FabricApiExtension fabricApi = target.getExtensions().getByType(FabricApiExtension.class);
+        action.execute(new LoomAndFabricApiConfigurer() {
+            @Override
+            public void loom(Action<? super LoomGradleExtensionAPI> action) {
+                action.execute(loom);
+            }
+
+            @Override
+            public void fabricApi(Action<? super FabricApiExtension> action) {
+                action.execute(fabricApi);
+            }
+        });
     }
 
-    public void neoForge(@NotNull Project common) {
-        MultiModExtension rootExtension = target.getRootProject().getExtensions().getByType(MultiModExtension.class);
+    public void fabricWithRoot(@NotNull Project root, @Nullable Project common) {
+        fabric(root, common, configurer -> {});
+    }
+
+    public void fabricWithRoot(@NotNull Project root, Action<? super LoomAndFabricApiConfigurer> action) {
+        fabric(root, null, action);
+    }
+
+    public void fabricWithRoot(@NotNull Project root) {
+        fabric(root, null, configurer -> {});
+    }
+
+    public void fabric(@Nullable Project common, Action<? super LoomAndFabricApiConfigurer> action) {
+        fabric(target.getRootProject(), common, action);
+    }
+
+    public void fabric(@Nullable Project common) {
+        fabric(common, configurer -> {});
+    }
+
+    public void fabric(Action<? super LoomAndFabricApiConfigurer> action) {
+        fabric(null, action);
+    }
+
+    public void fabric() {
+        fabric(configurer -> {});
+    }
+
+    public void neoForge(@NotNull Project root, @Nullable Project common, @NotNull Action<? super NeoForgeExtension> action) {
+        MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "neoforge");
 
         target.getPlugins().apply(ModDevPlugin.class);
@@ -401,7 +385,7 @@ public class MultiModExtension {
 
         neoForge.setVersion(rootExtension.neoForgeVersion.get());
         neoForge.getValidateAccessTransformers().set(true);
-        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.parchment.map(Object::toString)));
+        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.minecraft.parchment.map(Object::toString)));
 
         neoForge.getRuns().register("client", RunModel::client);
         neoForge.getRuns().register("server", RunModel::server);
@@ -411,45 +395,58 @@ public class MultiModExtension {
 
         target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
 
-        includeProject(target, common);
+        if (common != null) {
+            includeProject(target, common);
+        }
         rootExtension.trySetupPublishing(target, "neoforge", "neoforge", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
+
+        action.execute(neoForge);
     }
 
-    public void setupPublishing() {
-        target.getPlugins().apply(MavenPublishPlugin.class);
+    public void neoForgeWithRoot(@NotNull Project root, @Nullable Project common) {
+        neoForge(root, common, neoForge -> {});
+    }
 
-        PublishingExtension publishing = target.getExtensions().getByType(PublishingExtension.class);
-        publishing.getRepositories().addAll(mavenRepositories.get());
+    public void neoForgeWithRoot(@NotNull Project root, Action<? super NeoForgeExtension> action) {
+        neoForge(root, null, action);
+    }
 
-        if (modPublishingLazilyConfigured) {
-            target.getPlugins().apply(MppPlugin.class);
+    public void neoForgeWithRoot(@NotNull Project root) {
+        neoForge(root, null, neoForge -> {});
+    }
 
-            ModPublishExtension modPublish = target.getExtensions().getByType(ModPublishExtension.class);
-            // Bit cursed, but we have to manually set all properties here instead of using .from, since .from
-            // sets conventions instead of actual properties, which leads to a circular evaluation
-            // We also can't override the convention, so we have to check if an actual value was set with isPresent
-            setIfPresent(modPublish.getFile(), modPublishOptions.map(PublishOptions::getFile));
-            setIfPresent(modPublish.getVersion(), modPublishOptions.map(PublishOptions::getVersion));
-            setIfPresent(modPublish.getChangelog(), modPublishOptions.map(PublishOptions::getChangelog));
-            setIfPresent(modPublish.getType(), modPublishOptions.map(PublishOptions::getType));
-            setIfPresent(modPublish.getDisplayName(), modPublishOptions.map(PublishOptions::getDisplayName));
-            setIfPresent(modPublish.getModLoaders(), modPublishOptions.map(PublishOptions::getModLoaders));
-            //setIfPresent(modPublish.getAdditionalFiles(), modPublishOptions.map(PublishOptions::getAdditionalFiles)); TODO
-            setIfPresent(modPublish.getMaxRetries(), modPublishOptions.map(PublishOptions::getMaxRetries));
+    public void neoForge(@Nullable Project common, Action<? super NeoForgeExtension> action) {
+        neoForge(target.getRootProject(), common, action);
+    }
+
+    public void neoForge(@Nullable Project common) {
+        neoForge(common, neoForge -> {});
+    }
+
+    public void neoForge(Action<? super NeoForgeExtension> action) {
+        neoForge(null, action);
+    }
+
+    public void neoForge() {
+        neoForge(neoForge -> {});
+    }
+
+    public interface LoomAndFabricApiConfigurer {
+
+        void loom(Action<? super LoomGradleExtensionAPI> action);
+
+        void fabricApi(Action<? super FabricApiExtension> action);
+    }
+
+    private static <T> void setIfPresent(Property<T> property, Property<T> other) {
+        if (other.isPresent()) {
+            property.set(other);
         }
     }
 
-    private static <T> void setIfPresent(Property<T> property, Provider<Property<T>> other) {
-        Property<T> otherProperty = other.getOrNull();
-        if (otherProperty != null && otherProperty.isPresent()) {
-            property.set(otherProperty);
-        }
-    }
-
-    private static <T> void setIfPresent(ListProperty<T> property, Provider<ListProperty<T>> other) {
-        ListProperty<T> otherProperty = other.getOrNull();
-        if (otherProperty != null && otherProperty.isPresent()) {
-            property.set(otherProperty);
+    private static <T> void setIfPresent(ListProperty<T> property, ListProperty<T> other) {
+        if (other.isPresent()) {
+            property.set(other);
         }
     }
 }
