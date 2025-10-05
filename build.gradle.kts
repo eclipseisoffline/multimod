@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "xyz.eclipseisoffline"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -40,7 +40,18 @@ gradlePlugin {
 }
 
 publishing {
-
+    repositories {
+        maven {
+            name = "eclipseisofflineRelease"
+            url = uri("https://maven.eclipseisoffline.xyz/releases")
+            credentials(PasswordCredentials::class)
+        }
+        maven {
+            name = "eclipseisofflineSnapshot"
+            url = uri("https://maven.eclipseisoffline.xyz/snapshots")
+            credentials(PasswordCredentials::class)
+        }
+    }
 }
 
 tasks {

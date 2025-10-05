@@ -9,7 +9,7 @@ public class MultiModGradlePlugin implements Plugin<Project> {
 
     @Override
     public void apply(@NotNull Project target) {
-        MultiModExtension extension = target.getExtensions().create("mod", MultiModExtension.class, target);
+        target.getExtensions().create("multimod", MultiModExtension.class, target);
         if (target == target.getRootProject()) {
             target.getLogger().lifecycle("MultiMod: " + VERSION);
         }
