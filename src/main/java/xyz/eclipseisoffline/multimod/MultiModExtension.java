@@ -154,13 +154,13 @@ public class MultiModExtension {
         githubOptions.set(modPublishProvider().flatMap(modPublish -> modPublish.githubOptions(action)));
     }
 
-    public void maven(Action<? super MavenArtifactRepository> action) {
+    public void publishToMaven(Action<? super MavenArtifactRepository> action) {
         target.getPlugins().apply(MavenPublishPlugin.class);
         PublishingExtension publishing = target.getExtensions().getByType(PublishingExtension.class);
         publishing.getRepositories().maven(action);
     }
 
-    public void mavenLocal() {
+    public void publishToMavenLocal() {
         target.getPlugins().apply(MavenPublishPlugin.class);
         target.getExtensions().getByType(PublishingExtension.class).getRepositories().mavenLocal();
     }
