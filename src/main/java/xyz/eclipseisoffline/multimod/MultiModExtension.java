@@ -32,6 +32,7 @@ import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
+import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jetbrains.annotations.NotNull;
@@ -329,6 +330,7 @@ public class MultiModExtension {
         }
 
         target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
+        target.getTasks().withType(Test.class, task -> task.setEnabled(false));
 
         if (common != null) {
             includeProject(target, common);
