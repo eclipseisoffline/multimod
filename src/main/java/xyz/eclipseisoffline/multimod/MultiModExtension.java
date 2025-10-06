@@ -97,7 +97,7 @@ public class MultiModExtension {
         name.convention(target.getName());
         description.convention("");
         archivesBaseName.convention(id);
-        fabricLoader.convention(target.getDependencies().create("net.fabricmc:fabric-loader:" + FABRIC_LOADER_VERSION));
+        fabricLoader.convention(target.getDependencyFactory().create("net.fabricmc", "fabric-loader", FABRIC_LOADER_VERSION));
         supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "]"));
         targetJavaVersion.convention(21);
     }
@@ -107,7 +107,7 @@ public class MultiModExtension {
     }
 
     public void minecraft(String version) {
-        minecraft(target.getDependencies().create("com.mojang:minecraft:" + version));
+        minecraft(target.getDependencyFactory().create("com.mojang", "minecraft", version));
     }
 
     public void minecraft(Dependency dependency) {
@@ -196,7 +196,7 @@ public class MultiModExtension {
                 resources.getInputs().property("version", target.getVersion());
                 resources.getInputs().property("minecraft_version", minecraft.supportedMinecraftVersions.getOrElse(""));
                 resources.getInputs().property("neoforge_minecraft_version", minecraft.neoForgeSupportedMinecraftVersions.getOrElse(""));
-                resources.getInputs().property("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse(""));
+                resources.getInputs().property("neoforge_version", supportedNeoForgeVersions.getOrElse(""));
                 resources.getInputs().property("fabric_loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
                 resources.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
                 resources.getInputs().property("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse(""));
@@ -212,7 +212,7 @@ public class MultiModExtension {
                             Map.entry("version", target.getVersion()),
                             Map.entry("minecraft_version", minecraft.supportedMinecraftVersions.getOrElse("")),
                             Map.entry("neoforge_minecraft_version", minecraft.neoForgeSupportedMinecraftVersions.getOrElse("")),
-                            Map.entry("neoforge_version", supportedNeoForgeVersions.orElse(neoForgeVersion.map(version -> "[" + version + "]")).getOrElse("")),
+                            Map.entry("neoforge_version", supportedNeoForgeVersions.getOrElse("")),
                             Map.entry("fabric_loader_version", fabricLoader.map(Dependency::getVersion).getOrElse("")),
                             Map.entry("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse("")),
                             Map.entry("modrinth_id", modrinthOptions.flatMap(ModrinthOptions::getProjectId).getOrElse("")),

@@ -32,8 +32,8 @@ public class MinecraftSettings {
         supportedMinecraftVersions = factory.property(String.class);
         neoForgeSupportedMinecraftVersions = factory.property(String.class);
 
-        mixin.convention(project.getDependencies().create("org.spongepowered:mixin:" + MIXIN_VERSION));
-        mixinExtras.convention(project.getDependencies().create("io.github.llamalad7:mixinextras-common:" + MIXIN_EXTRAS_VERSION));
+        mixin.convention(project.getDependencyFactory().create("org.spongepowered", "mixin", MIXIN_VERSION));
+        mixinExtras.convention(project.getDependencyFactory().create("io.github.llamalad7", "mixinextras-common", MIXIN_EXTRAS_VERSION));
 
         supportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion));
         neoForgeSupportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]"));
