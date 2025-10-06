@@ -325,6 +325,8 @@ public class MultiModExtension {
         }));
         dependencies.add("modImplementation", rootExtension.fabricLoader);
 
+        loom.mixin(mixin -> mixin.getDefaultRefmapName().set(rootExtension.archivesBaseName.map(name -> name + "-refmap.json")));
+
         if (rootExtension.fabricApi.isPresent()) {
             dependencies.add("modImplementation", rootExtension.fabricApi);
         }
