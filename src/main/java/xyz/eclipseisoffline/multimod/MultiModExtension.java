@@ -328,6 +328,8 @@ public class MultiModExtension {
             dependencies.add("modImplementation", rootExtension.fabricApi);
         }
 
+        target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
+
         if (common != null) {
             includeProject(target, common);
         }
