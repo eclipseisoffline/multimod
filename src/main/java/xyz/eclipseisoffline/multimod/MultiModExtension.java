@@ -260,6 +260,7 @@ public class MultiModExtension {
                     github.from(githubOptions.get());
                     github.getFile().set(modFile);
                     github.getDisplayName().convention(name.get() + "-" + type + " " + target.getVersion());
+                    github.getTagName().convention(github.getVersion().map(version -> version + "-" + type));
                 });
             }
         }
