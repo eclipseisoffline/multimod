@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "xyz.eclipseisoffline"
-version = "0.1.5-SNAPSHOT"
+version = "0.1.6-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -42,13 +42,11 @@ gradlePlugin {
 publishing {
     repositories {
         maven {
-            name = "eclipseisofflineRelease"
-            url = uri("https://maven.eclipseisoffline.xyz/releases")
-            credentials(PasswordCredentials::class)
-        }
-        maven {
-            name = "eclipseisofflineSnapshot"
-            url = uri("https://maven.eclipseisoffline.xyz/snapshots")
+            name = "eclipseisoffline"
+            url = when {
+                version.toString().endsWith("-SNAPSHOT") -> uri("https://maven.eclipseisoffline.xyz/snapshots")
+                else -> uri("https://maven.eclipseisoffline.xyz/releases")
+            }
             credentials(PasswordCredentials::class)
         }
     }

@@ -1,6 +1,6 @@
 [versions]
 moddev-gradle = "2.0.112"
-fabric-loom = "1.11-SNAPSHOT"
+fabric-loom = "1.12-SNAPSHOT"
 mod-publish-plugin = "0.8.4"
 
 [libraries]
