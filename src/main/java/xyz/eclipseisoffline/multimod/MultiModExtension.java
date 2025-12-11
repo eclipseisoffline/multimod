@@ -35,8 +35,7 @@ import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -69,7 +68,7 @@ public class MultiModExtension {
 
     public final Property<Integer> targetJavaVersion;
 
-    public MultiModExtension(@NotNull Project target) {
+    public MultiModExtension(Project target) {
         this.target = target;
 
         ObjectFactory factory = target.getObjects();
@@ -170,7 +169,7 @@ public class MultiModExtension {
         return archivesBaseName.map(s -> s + "-" + type);
     }
 
-    private void baseConfiguration(@NotNull Project target, String type) {
+    private void baseConfiguration(Project target, String type) {
         target.getPlugins().apply(JavaLibraryPlugin.class);
         settings.defaultRepositories.execute(target.getRepositories());
 
@@ -236,7 +235,7 @@ public class MultiModExtension {
         });
     }
 
-    private void trySetupPublishing(@NotNull Project subproject, String type, @Nullable String modLoader, @Nullable Provider<RegularFile> modFile) {
+    private void trySetupPublishing(Project subproject, String type, @Nullable String modLoader, @Nullable Provider<RegularFile> modFile) {
         PublishingExtension publishing = target.getExtensions().findByType(PublishingExtension.class);
         if (publishing != null) {
             publishing.getPublications().register(type, MavenPublication.class, publication -> {
@@ -266,7 +265,7 @@ public class MultiModExtension {
         }
     }
 
-    private static void includeProject(@NotNull Project target, @NotNull Project include) {
+    private static void includeProject(Project target, Project include) {
         target.getDependencies().add("compileOnly", include);
 
         JavaPluginExtension includeJava = include.getExtensions().getByType(JavaPluginExtension.class);
@@ -308,7 +307,7 @@ public class MultiModExtension {
         common(neoForge -> {});
     }
 
-    public void fabric(@NotNull Project root, @Nullable Project common, Action<? super LoomAndFabricApiConfigurer> action) {
+    public void fabric(Project root, @Nullable Project common, Action<? super LoomAndFabricApiConfigurer> action) {
         MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "fabric");
 
@@ -354,15 +353,15 @@ public class MultiModExtension {
         });
     }
 
-    public void fabricWithRoot(@NotNull Project root, @Nullable Project common) {
+    public void fabricWithRoot(Project root, @Nullable Project common) {
         fabric(root, common, configurer -> {});
     }
 
-    public void fabricWithRoot(@NotNull Project root, Action<? super LoomAndFabricApiConfigurer> action) {
+    public void fabricWithRoot(Project root, Action<? super LoomAndFabricApiConfigurer> action) {
         fabric(root, null, action);
     }
 
-    public void fabricWithRoot(@NotNull Project root) {
+    public void fabricWithRoot(Project root) {
         fabric(root, null, configurer -> {});
     }
 
@@ -382,7 +381,7 @@ public class MultiModExtension {
         fabric(configurer -> {});
     }
 
-    public void neoForge(@NotNull Project root, @Nullable Project common, @NotNull Action<? super NeoForgeExtension> action) {
+    public void neoForge(Project root, @Nullable Project common, Action<? super NeoForgeExtension> action) {
         MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "neoforge");
 
@@ -410,15 +409,15 @@ public class MultiModExtension {
         action.execute(neoForge);
     }
 
-    public void neoForgeWithRoot(@NotNull Project root, @Nullable Project common) {
+    public void neoForgeWithRoot(Project root, @Nullable Project common) {
         neoForge(root, common, neoForge -> {});
     }
 
-    public void neoForgeWithRoot(@NotNull Project root, Action<? super NeoForgeExtension> action) {
+    public void neoForgeWithRoot(Project root, Action<? super NeoForgeExtension> action) {
         neoForge(root, null, action);
     }
 
-    public void neoForgeWithRoot(@NotNull Project root) {
+    public void neoForgeWithRoot(Project root) {
         neoForge(root, null, neoForge -> {});
     }
 
