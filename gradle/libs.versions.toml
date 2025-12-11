@@ -1,7 +1,7 @@
 [versions]
-moddev-gradle = "2.0.112"
-fabric-loom = "1.12-SNAPSHOT"
-mod-publish-plugin = "0.8.4"
+moddev-gradle = "2.0.123"
+fabric-loom = "1.14-SNAPSHOT"
+mod-publish-plugin = "1.1.0"
 
 [libraries]
 moddev-gradle = {group = "net.neoforged", name = "moddev-gradle",  version.ref = "moddev-gradle"}
