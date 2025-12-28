@@ -3,8 +3,10 @@ plugins {
     `maven-publish`
 }
 
+val baseVersion = "0.2.0"
+
 group = "xyz.eclipseisoffline"
-version = "0.2.0-SNAPSHOT"
+version = if (System.getenv("MULTIMOD_IS_DEV")?.lowercase() == "true") "$baseVersion-SNAPSHOT" else baseVersion
 
 val targetJavaVersion = 25
 
