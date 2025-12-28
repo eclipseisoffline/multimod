@@ -260,6 +260,7 @@ public class MultiModExtension {
                     github.getTagName().convention(github.getVersion().map(version -> version + "-" + type));
                 });
             }
+            target.getTasks().named("publish").configure(task -> task.dependsOn("publishMods"));
         }
     }
 

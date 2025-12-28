@@ -3,7 +3,7 @@ plugins {
     `maven-publish`
 }
 
-val baseVersion = "0.2.1"
+val baseVersion = "0.2.2"
 
 group = "xyz.eclipseisoffline"
 version = if (System.getenv("MULTIMOD_IS_DEV")?.lowercase() == "true") "$baseVersion-SNAPSHOT" else baseVersion
