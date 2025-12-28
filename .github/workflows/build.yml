@@ -3,7 +3,6 @@ name: build and publish
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
   pull_request:
     branches: ["main"]
 
@@ -26,8 +25,9 @@ jobs:
       - name: Build with Gradle Wrapper
         run: ./gradlew build
       - name: Publish with Gradle Wrapper
-        if: ${{ success() && github.repository == 'eclipseisoffline/multimod' && github.ref_name == 'main' }}
+        if: ${{ success() && github.repository == 'eclipseisoffline/multimod' && (github.ref_name == 'main' || github.ref_name == 'development') }}
         run: ./gradlew publish
         env:
           ORG_GRADLE_PROJECT_eclipseisofflineUsername: ${{ vars.MAVEN_USER }}
           ORG_GRADLE_PROJECT_eclipseisofflinePassword: ${{ secrets.MAVEN_SECRET }}
+          MULTIMOD_IS_DEV: ${{ github.ref_name != 'main' }}
