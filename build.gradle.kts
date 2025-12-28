@@ -43,6 +43,8 @@ gradlePlugin {
     }
 }
 
+print(System.getenv("MULTIMOD_IS_DEV"))
+
 publishing {
     repositories {
         maven {
