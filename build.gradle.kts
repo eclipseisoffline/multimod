@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "xyz.eclipseisoffline"
-version = "0.2.0-SNAPSHOT"
+version = "0.2.0"
 
 val targetJavaVersion = 25
 
@@ -42,8 +42,6 @@ gradlePlugin {
         }
     }
 }
-
-print(System.getenv("MULTIMOD_IS_DEV"))
 
 publishing {
     repositories {
