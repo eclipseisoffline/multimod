@@ -7,8 +7,12 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MinecraftSettings {
+    private static final Pattern MINECRAFT_SNAPSHOT_PATTERN = Pattern.compile("^(.+)-([A-z]+)-(\\d+)$");
+
     public final Property<Dependency> minecraft;
 
     public final Property<Dependency> mixin;
@@ -44,11 +48,23 @@ public class MinecraftSettings {
             if (list.isEmpty()) {
                 throw new IllegalArgumentException("Must specify at least one supported Minecraft version");
             } else if (list.size() == 1) {
-                return list.getFirst();
+                return normaliseMinecraftVersionForFabric(list.getFirst());
             } else {
-                return ">=" + list.getFirst() + " <=" + list.getLast();
+                return ">=" + normaliseMinecraftVersionForFabric(list.getFirst()) + " <=" + normaliseMinecraftVersionForFabric(list.getLast());
             }
         }));
         neoForgeSupportedMinecraftVersions.set(versions.map(list -> "[" + String.join(",", list) + "]"));
+    }
+
+    private static String normaliseMinecraftVersionForFabric(String version) {
+        Matcher snapshotMatcher = MINECRAFT_SNAPSHOT_PATTERN.matcher(version);
+        if (snapshotMatcher.matches()) {
+            String semverType = switch (snapshotMatcher.group(2)) {
+                case "snapshot" -> "alpha";
+                default -> snapshotMatcher.group(2);
+            };
+            return snapshotMatcher.group(1) + "-" + semverType + "." + snapshotMatcher.group(3);
+        }
+        return version;
     }
 }
