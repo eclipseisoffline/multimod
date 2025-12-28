@@ -4,7 +4,9 @@ plugins {
 }
 
 group = "xyz.eclipseisoffline"
-version = "0.1.6-SNAPSHOT"
+version = "0.2.0-SNAPSHOT"
+
+val targetJavaVersion = 25
 
 repositories {
     mavenCentral()
@@ -26,8 +28,10 @@ dependencies {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    val version = JavaVersion.toVersion(targetJavaVersion)
+
+    sourceCompatibility = version
+    targetCompatibility = version
 }
 
 gradlePlugin {
@@ -53,6 +57,10 @@ publishing {
 }
 
 tasks {
+    withType<JavaCompile>().configureEach {
+        options.release = targetJavaVersion
+    }
+
     jar {
         manifest {
             attributes["Implementation-Version"] = project.version

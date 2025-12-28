@@ -5,10 +5,9 @@ import me.modmuss50.mpp.MppPlugin;
 import me.modmuss50.mpp.PublishOptions;
 import me.modmuss50.mpp.platforms.github.GithubOptions;
 import me.modmuss50.mpp.platforms.modrinth.ModrinthOptions;
-import net.fabricmc.loom.LoomGradlePlugin;
+import net.fabricmc.loom.LoomNoRemapGradlePlugin;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.fabricmc.loom.api.fabricapi.FabricApiExtension;
-import net.fabricmc.loom.task.RemapJarTask;
 import net.neoforged.moddevgradle.boot.ModDevPlugin;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
@@ -32,18 +31,17 @@ import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
-import org.gradle.api.tasks.testing.Test;
+import org.gradle.api.tasks.testing.AbstractTestTask;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @SuppressWarnings("unused")
 public class MultiModExtension {
-    public static final String FABRIC_LOADER_VERSION = "0.17.2";
-
     private final Project target;
 
     public final MultiModSettings settings;
@@ -97,9 +95,9 @@ public class MultiModExtension {
         name.convention(target.getName());
         description.convention("");
         archivesBaseName.convention(id);
-        fabricLoader.convention(target.getDependencyFactory().create("net.fabricmc", "fabric-loader", FABRIC_LOADER_VERSION));
+        fabricLoader.convention(target.getDependencyFactory().create("net.fabricmc", "fabric-loader", MultiModVersions.FABRIC_LOADER_VERSION));
         supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "]"));
-        targetJavaVersion.convention(21);
+        targetJavaVersion.convention(MultiModVersions.JAVA_VERSION);
     }
 
     public void settings(Action<? super MultiModSettings> action) {
@@ -275,69 +273,64 @@ public class MultiModExtension {
             target.getTasks().withType(Javadoc.class, task -> task.source(set.getAllJava()));
             target.getTasks().withType(ProcessResources.class, task -> task.from(set.getResources()));
         });
+        target.getTasks().withType(AbstractTestTask.class, task -> task.getFailOnNoDiscoveredTests().set(false));
     }
 
-    public void common(Project root, Action<? super NeoForgeExtension> action) {
+    public void common(Project root, Action<? super LoomGradleExtensionAPI> action) {
         MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "common");
 
-        target.getPlugins().apply(ModDevPlugin.class);
+        target.getPlugins().apply(LoomNoRemapGradlePlugin.class);
 
-        NeoForgeExtension neoForge = target.getExtensions().getByType(NeoForgeExtension.class);
-        neoForge.setNeoFormVersion(rootExtension.minecraft.minecraft.map(Dependency::getVersion).map(version -> version + "-" + rootExtension.minecraft.neoFormTimestamp.get()).get());
-        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.minecraft.parchment.map(Object::toString)));
+        LoomGradleExtensionAPI loom = target.getExtensions().getByType(LoomGradleExtensionAPI.class);
+
+        DependencyHandler dependencies = target.getDependencies();
+        dependencies.add("minecraft", rootExtension.minecraft.minecraft);
 
         target.getDependencies().add("compileOnly", rootExtension.minecraft.mixin);
         target.getDependencies().add("compileOnly", rootExtension.minecraft.mixinExtras);
 
+        loom.runs(Set::clear);
+
         rootExtension.trySetupPublishing(target, "common", null, null);
 
-        action.execute(neoForge);
+        action.execute(loom);
     }
 
     public void commonWithRoot(Project root) {
-        common(root, neoForge -> {});
+        common(root, loom -> {});
     }
 
-    public void common(Action<? super NeoForgeExtension> neoForgeAction) {
-        common(target.getRootProject(), neoForgeAction);
+    public void common(Action<? super LoomGradleExtensionAPI> action) {
+        common(target.getRootProject(), action);
     }
 
     public void common() {
-        common(neoForge -> {});
+        common(loom -> {});
     }
 
     public void fabric(Project root, @Nullable Project common, Action<? super LoomAndFabricApiConfigurer> action) {
         MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "fabric");
 
-        target.getPlugins().apply(LoomGradlePlugin.class);
+        target.getPlugins().apply(LoomNoRemapGradlePlugin.class);
 
         LoomGradleExtensionAPI loom = target.getExtensions().getByType(LoomGradleExtensionAPI.class);
 
         DependencyHandler dependencies = target.getDependencies();
         dependencies.add("minecraft", rootExtension.minecraft.minecraft);
-        dependencies.add("mappings", loom.layered(layers -> {
-            layers.officialMojangMappings();
-            if (rootExtension.minecraft.parchment.isPresent()) {
-                layers.parchment(rootExtension.minecraft.parchment);
-            }
-        }));
-        dependencies.add("modImplementation", rootExtension.fabricLoader);
+        dependencies.add("implementation", rootExtension.fabricLoader);
 
-        loom.mixin(mixin -> mixin.getDefaultRefmapName().set(rootExtension.archivesBaseName.map(name -> name + "-refmap.json")));
+        // TODO test removal of mixins ap
 
         if (rootExtension.fabricApi.isPresent()) {
-            dependencies.add("modImplementation", rootExtension.fabricApi);
+            dependencies.add("implementation", rootExtension.fabricApi);
         }
-
-        target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
-        target.getTasks().withType(Test.class, task -> task.setEnabled(false));
 
         if (common != null) {
             includeProject(target, common);
         }
-        rootExtension.trySetupPublishing(target, "fabric", "fabric", target.getTasks().named("remapJar", RemapJarTask.class).flatMap(RemapJarTask::getArchiveFile));
+        rootExtension.trySetupPublishing(target, "fabric", "fabric", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
 
         FabricApiExtension fabricApi = target.getExtensions().getByType(FabricApiExtension.class);
         action.execute(new LoomAndFabricApiConfigurer() {
@@ -381,6 +374,7 @@ public class MultiModExtension {
         fabric(configurer -> {});
     }
 
+    // TODO?
     public void neoForge(Project root, @Nullable Project common, Action<? super NeoForgeExtension> action) {
         MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "neoforge");
@@ -389,17 +383,18 @@ public class MultiModExtension {
 
         NeoForgeExtension neoForge = target.getExtensions().getByType(NeoForgeExtension.class);
 
-        neoForge.setVersion(rootExtension.neoForgeVersion.get());
+        neoForge.enable(versionSettings -> {
+            versionSettings.setVersion(rootExtension.neoForgeVersion.get());
+            versionSettings.setDisableRecompilation(rootExtension.settings.disableNeoForgeRecompilation.get());
+        });
+
         neoForge.getValidateAccessTransformers().set(true);
-        neoForge.parchment(configuration -> configuration.getParchmentArtifact().set(rootExtension.minecraft.parchment.map(Object::toString)));
 
         neoForge.getRuns().register("client", RunModel::client);
         neoForge.getRuns().register("server", RunModel::server);
 
         JavaPluginExtension java = target.getExtensions().getByType(JavaPluginExtension.class);
         neoForge.getMods().register(rootExtension.id.get(), mod -> mod.sourceSet(java.getSourceSets().getByName("main")));
-
-        target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
 
         if (common != null) {
             includeProject(target, common);

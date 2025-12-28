@@ -1,5 +1,5 @@
 [versions]
-moddev-gradle = "2.0.123"
+moddev-gradle = "2.0.126"
 fabric-loom = "1.14-SNAPSHOT"
 mod-publish-plugin = "1.1.0"
 

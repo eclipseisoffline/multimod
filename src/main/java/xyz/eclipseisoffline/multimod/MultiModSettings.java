@@ -12,6 +12,7 @@ public class MultiModSettings {
     public final Property<Boolean> setJavaVersion;
     public final Property<Boolean> configureResources;
     public final Property<Boolean> includeLicenseInJar;
+    public final Property<Boolean> disableNeoForgeRecompilation;
 
     public MultiModSettings(ObjectFactory factory) {
         defaultRepositories = repositories -> {
@@ -19,10 +20,6 @@ public class MultiModSettings {
             repositories.maven(maven -> {
                 maven.setName("Mojang");
                 maven.setUrl("https://libraries.minecraft.net");
-            });
-            repositories.maven(maven -> {
-                maven.setName("ParchmentMC");
-                maven.setUrl("https://maven.parchmentmc.org");
             });
             repositories.maven(maven -> {
                 maven.setName("Fabric");
@@ -38,6 +35,7 @@ public class MultiModSettings {
         setJavaVersion = factory.property(Boolean.class).convention(true);
         configureResources = factory.property(Boolean.class).convention(true);
         includeLicenseInJar = factory.property(Boolean.class).convention(true);
+        disableNeoForgeRecompilation = factory.property(Boolean.class).convention(true);
     }
 
     public void repositories(Action<? super RepositoryHandler> repositories) {
