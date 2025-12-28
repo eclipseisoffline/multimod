@@ -3,8 +3,10 @@ plugins {
     `maven-publish`
 }
 
+val baseVersion = "0.2.0"
+
 group = "xyz.eclipseisoffline"
-version = "0.2.0"
+version = if (System.getenv("MULTIMOD_IS_DEV")?.lowercase() == "true") "$baseVersion-SNAPSHOT" else baseVersion
 
 val targetJavaVersion = 25
 
@@ -48,8 +50,7 @@ publishing {
         maven {
             name = "eclipseisoffline"
             url = when {
-                (version.toString().endsWith("-SNAPSHOT") || System.getenv()["MULTIMOD_IS_DEV"]?.lowercase() == "true")
-                    -> uri("https://maven.eclipseisoffline.xyz/snapshots")
+                version.toString().endsWith("-SNAPSHOT") -> uri("https://maven.eclipseisoffline.xyz/snapshots")
                 else -> uri("https://maven.eclipseisoffline.xyz/releases")
             }
             credentials(PasswordCredentials::class)
