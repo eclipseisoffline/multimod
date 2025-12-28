@@ -8,7 +8,4 @@ and this README is to be expanded soon.
 
 Licensed under MIT.
 
-TO-DOs are supporting proper dependency configurations for Fabric Loom and ModDev, as well as other Loom/ModDev
-configurations. Another big TO-DO is using Minecraft's own deobfuscated sources in the common module. These TO-DOs
-will all be worked on in the future, once Fabric Loom and ModDev have adjusted to Mojang's deobfuscated builds.
-For now, the project is in maintenance mode.
+TO-DOs are easy process resources configurations, and maybe other things to make buildscripts cleaner.

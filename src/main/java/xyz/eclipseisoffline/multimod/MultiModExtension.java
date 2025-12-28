@@ -273,6 +273,7 @@ public class MultiModExtension {
             target.getTasks().withType(Javadoc.class, task -> task.source(set.getAllJava()));
             target.getTasks().withType(ProcessResources.class, task -> task.from(set.getResources()));
         });
+        target.getTasks().named("compileTestJava", task -> task.setEnabled(false));
         target.getTasks().withType(AbstractTestTask.class, task -> task.getFailOnNoDiscoveredTests().set(false));
     }
 
@@ -320,8 +321,6 @@ public class MultiModExtension {
         DependencyHandler dependencies = target.getDependencies();
         dependencies.add("minecraft", rootExtension.minecraft.minecraft);
         dependencies.add("implementation", rootExtension.fabricLoader);
-
-        // TODO test removal of mixins ap
 
         if (rootExtension.fabricApi.isPresent()) {
             dependencies.add("implementation", rootExtension.fabricApi);
@@ -374,7 +373,6 @@ public class MultiModExtension {
         fabric(configurer -> {});
     }
 
-    // TODO?
     public void neoForge(Project root, @Nullable Project common, Action<? super NeoForgeExtension> action) {
         MultiModExtension rootExtension = root.getExtensions().getByType(MultiModExtension.class);
         rootExtension.baseConfiguration(target, "neoforge");
