@@ -26,7 +26,7 @@ jobs:
       - name: Build with Gradle Wrapper
         run: ./gradlew build
       - name: Publish with Gradle Wrapper
-        if: ${{ success() && github.repository == 'eclipseisoffline/multimod' && (github.ref_name == 'main' || github.ref_name == 'development') }}
+        if: ${{ success() && github.repository == 'eclipseisoffline/multimod' && (github.ref_name == 'main' || github.head_ref == 'development') }}
         run: ./gradlew publish
         env:
           ORG_GRADLE_PROJECT_eclipseisofflineUsername: ${{ vars.MAVEN_USER }}
