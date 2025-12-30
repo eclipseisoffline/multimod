@@ -38,7 +38,16 @@ public class MultiModSettings {
         disableNeoForgeRecompilation = factory.property(Boolean.class).convention(true);
     }
 
+    // TODO fix this with from, can it be a property? is this method necessary?
     public void repositories(Action<? super RepositoryHandler> repositories) {
         defaultRepositories = repositories;
+    }
+
+    public void from(MultiModSettings other) {
+        buildSourcesJar.convention(other.buildSourcesJar);
+        setJavaVersion.convention(other.setJavaVersion);
+        configureResources.convention(other.configureResources);
+        includeLicenseInJar.convention(other.includeLicenseInJar);
+        disableNeoForgeRecompilation.convention(other.disableNeoForgeRecompilation);
     }
 }

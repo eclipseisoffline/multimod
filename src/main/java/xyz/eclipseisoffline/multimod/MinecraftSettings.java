@@ -56,6 +56,14 @@ public class MinecraftSettings {
         neoForgeSupportedMinecraftVersions.set(versions.map(list -> "[" + String.join(",", list) + "]"));
     }
 
+    public void from(MinecraftSettings other) {
+        minecraft.convention(other.minecraft);
+        mixin.convention(other.mixin);
+        mixinExtras.convention(other.mixinExtras);
+        supportedMinecraftVersions.convention(other.supportedMinecraftVersions);
+        neoForgeSupportedMinecraftVersions.convention(other.neoForgeSupportedMinecraftVersions);
+    }
+
     private static String normaliseMinecraftVersionForFabric(String version) {
         Matcher snapshotMatcher = MINECRAFT_SNAPSHOT_PATTERN.matcher(version);
         if (snapshotMatcher.matches()) {
