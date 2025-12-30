@@ -162,7 +162,21 @@ public class MultiModExtension {
 
     private void baseConfiguration(Project target, String type) {
         target.getPlugins().apply(JavaLibraryPlugin.class);
-        settings.defaultRepositories.execute(target.getRepositories());
+        if (settings.includeCommonRepositories.get()) {
+            target.getRepositories().mavenCentral();
+            target.getRepositories().maven(maven -> {
+                maven.setName("Mojang");
+                maven.setUrl("https://libraries.minecraft.net");
+            });
+            target.getRepositories().maven(maven -> {
+                maven.setName("Fabric");
+                maven.setUrl("https://maven.fabricmc.net");
+            });
+            target.getRepositories().maven(maven -> {
+                maven.setName("NeoForged");
+                maven.setUrl("https://maven.neoforged.net/releases");
+            });
+        }
 
         BasePluginExtension baseExtension = target.getExtensions().getByType(BasePluginExtension.class);
         baseExtension.getArchivesName().set(getArtifactId(type));
