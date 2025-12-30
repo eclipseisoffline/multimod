@@ -138,7 +138,7 @@ public class ModPublishingSettings {
 
     private static <T> void setIfPresent(ListProperty<T> destination, ListProperty<T> source) {
         if (source.isPresent()) {
-            destination.set(source);
+            destination.addAll(source);
         }
     }
 }
