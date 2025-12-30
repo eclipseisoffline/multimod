@@ -1,5 +1,6 @@
 package xyz.eclipseisoffline.multimod;
 
+import me.modmuss50.mpp.PlatformOptions;
 import me.modmuss50.mpp.PublishOptions;
 import me.modmuss50.mpp.platforms.github.GithubOptions;
 import me.modmuss50.mpp.platforms.modrinth.ModrinthOptions;
@@ -103,8 +104,14 @@ public class ModPublishingSettings {
         setIfPresent(destination.getMaxRetries(), source.getMaxRetries());
     }
 
-    private static void copyModrinthOptions(ModrinthOptions source, ModrinthOptions destination) {
+    private static void copyPlatformOptions(PlatformOptions source, PlatformOptions destination) {
         copyBasePublishOptions(source, destination);
+        setIfPresent(destination.getAccessToken(), source.getAccessToken());
+        setIfPresent(destination.getAnnouncementTitle(), source.getAnnouncementTitle());
+    }
+
+    private static void copyModrinthOptions(ModrinthOptions source, ModrinthOptions destination) {
+        copyPlatformOptions(source, destination);
         setIfPresent(destination.getDependencies(), source.getDependencies());
         setIfPresent(destination.getProjectId(), source.getProjectId());
         setIfPresent(destination.getMinecraftVersions(), source.getMinecraftVersions());
@@ -114,7 +121,7 @@ public class ModPublishingSettings {
     }
 
     private static void copyGithubOptions(GithubOptions source, GithubOptions destination) {
-        copyBasePublishOptions(source, destination);
+        copyPlatformOptions(source, destination);
         setIfPresent(destination.getRepository(), source.getRepository());
         setIfPresent(destination.getCommitish(), source.getCommitish());
         setIfPresent(destination.getTagName(), source.getTagName());
