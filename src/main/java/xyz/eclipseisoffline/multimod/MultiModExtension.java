@@ -153,6 +153,7 @@ public class MultiModExtension {
     }
 
     private Optional<Action<? super RepositoryHandler>> resolvePublishingSettings() {
+        // TODO maybe improve this so parent doesn't have to be a field
         return publishingSettings.or(() -> parent.flatMap(MultiModExtension::resolvePublishingSettings));
     }
 
@@ -160,7 +161,13 @@ public class MultiModExtension {
         return archivesBaseName.map(s -> s + "-" + type);
     }
 
-    private void baseConfiguration(Project target, String type) {
+    private void baseConfiguration(String type) {
+        Project parentProject = target.getParent();
+        if (settings.inheritGroupAndVersionFromParent.get() && parentProject != null) {
+            target.setGroup(parentProject.getGroup());
+            target.setVersion(parentProject.getVersion());
+        }
+
         target.getPlugins().apply(JavaLibraryPlugin.class);
         if (settings.includeCommonRepositories.get()) {
             target.getRepositories().mavenCentral();
@@ -295,7 +302,7 @@ public class MultiModExtension {
     }
 
     public void common(Action<? super LoomGradleExtensionAPI> action) {
-        baseConfiguration(target, "common");
+        baseConfiguration("common");
 
         target.getPlugins().apply(LoomNoRemapGradlePlugin.class);
 
@@ -319,7 +326,7 @@ public class MultiModExtension {
     }
 
     public void fabric(@Nullable Project common, Action<? super LoomAndFabricApiConfigurer> action) {
-        baseConfiguration(target, "fabric");
+        baseConfiguration("fabric");
 
         target.getPlugins().apply(LoomNoRemapGradlePlugin.class);
 
@@ -365,7 +372,7 @@ public class MultiModExtension {
     }
 
     public void neoForge(@Nullable Project common, Action<? super NeoForgeExtension> action) {
-        baseConfiguration(target, "neoforge");
+        baseConfiguration("neoforge");
 
         target.getPlugins().apply(ModDevPlugin.class);
 

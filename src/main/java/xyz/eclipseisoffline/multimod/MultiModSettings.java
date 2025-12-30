@@ -4,6 +4,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 
 public class MultiModSettings {
+    public final Property<Boolean> inheritGroupAndVersionFromParent;
     public final Property<Boolean> includeCommonRepositories;
     public final Property<Boolean> buildSourcesJar;
     public final Property<Boolean> setJavaVersion;
@@ -12,6 +13,7 @@ public class MultiModSettings {
     public final Property<Boolean> disableNeoForgeRecompilation;
 
     public MultiModSettings(ObjectFactory factory) {
+        inheritGroupAndVersionFromParent = factory.property(Boolean.class).convention(true);
         includeCommonRepositories = factory.property(Boolean.class).convention(true);
         buildSourcesJar = factory.property(Boolean.class).convention(true);
         setJavaVersion = factory.property(Boolean.class).convention(true);
@@ -21,6 +23,7 @@ public class MultiModSettings {
     }
 
     public void from(MultiModSettings other) {
+        inheritGroupAndVersionFromParent.convention(other.inheritGroupAndVersionFromParent);
         includeCommonRepositories.convention(other.includeCommonRepositories);
         buildSourcesJar.convention(other.buildSourcesJar);
         setJavaVersion.convention(other.setJavaVersion);
