@@ -1,13 +1,10 @@
 package xyz.eclipseisoffline.multimod;
 
-import org.gradle.api.Action;
-import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 
 public class MultiModSettings {
-    Action<? super RepositoryHandler> defaultRepositories;
-
+    public final Property<Boolean> includeCommonRepositories;
     public final Property<Boolean> buildSourcesJar;
     public final Property<Boolean> setJavaVersion;
     public final Property<Boolean> configureResources;
@@ -15,22 +12,7 @@ public class MultiModSettings {
     public final Property<Boolean> disableNeoForgeRecompilation;
 
     public MultiModSettings(ObjectFactory factory) {
-        defaultRepositories = repositories -> {
-            repositories.mavenCentral();
-            repositories.maven(maven -> {
-                maven.setName("Mojang");
-                maven.setUrl("https://libraries.minecraft.net");
-            });
-            repositories.maven(maven -> {
-                maven.setName("Fabric");
-                maven.setUrl("https://maven.fabricmc.net");
-            });
-            repositories.maven(maven -> {
-                maven.setName("NeoForged");
-                maven.setUrl("https://maven.neoforged.net/releases");
-            });
-        };
-
+        includeCommonRepositories = factory.property(Boolean.class).convention(true);
         buildSourcesJar = factory.property(Boolean.class).convention(true);
         setJavaVersion = factory.property(Boolean.class).convention(true);
         configureResources = factory.property(Boolean.class).convention(true);
@@ -38,7 +20,12 @@ public class MultiModSettings {
         disableNeoForgeRecompilation = factory.property(Boolean.class).convention(true);
     }
 
-    public void repositories(Action<? super RepositoryHandler> repositories) {
-        defaultRepositories = repositories;
+    public void from(MultiModSettings other) {
+        includeCommonRepositories.convention(other.includeCommonRepositories);
+        buildSourcesJar.convention(other.buildSourcesJar);
+        setJavaVersion.convention(other.setJavaVersion);
+        configureResources.convention(other.configureResources);
+        includeLicenseInJar.convention(other.includeLicenseInJar);
+        disableNeoForgeRecompilation.convention(other.disableNeoForgeRecompilation);
     }
 }
