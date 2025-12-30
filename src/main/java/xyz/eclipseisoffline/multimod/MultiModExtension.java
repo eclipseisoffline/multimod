@@ -226,7 +226,7 @@ public class MultiModExtension {
         });
     }
 
-    private void trySetupPublishing(Project subproject, String type, @Nullable String modLoader, @Nullable Provider<RegularFile> modFile) {
+    private void trySetupPublishing(String type, @Nullable String modLoader, @Nullable Provider<RegularFile> modFile) {
         Optional<Action<? super RepositoryHandler>> repositoryPublishing = resolvePublishingSettings();
         if (repositoryPublishing.isPresent()) {
             target.getPlugins().apply(MavenPublishPlugin.class);
@@ -234,7 +234,7 @@ public class MultiModExtension {
             PublishingExtension publishing = target.getExtensions().getByType(PublishingExtension.class);
             publishing.getPublications().register(type, MavenPublication.class, publication -> {
                 publication.setArtifactId(getArtifactId(type).get());
-                publication.from(subproject.getComponents().getByName("java"));
+                publication.from(target.getComponents().getByName("java"));
             });
             repositoryPublishing.get().execute(publishing.getRepositories());
         }
@@ -260,7 +260,9 @@ public class MultiModExtension {
                     github.getTagName().convention(github.getVersion().map(version -> version + "-" + type));
                 });
             }
-            target.getTasks().named("publish").configure(task -> task.dependsOn("publishMods"));
+            if (modPublishingSettings.makePublishTaskDepend.get()) {
+                target.getTasks().named("publish").configure(task -> task.dependsOn("publishMods"));
+            }
         }
     }
 
@@ -293,7 +295,7 @@ public class MultiModExtension {
 
         loom.runs(Set::clear);
 
-        trySetupPublishing(target, "common", null, null);
+        trySetupPublishing("common", null, null);
 
         action.execute(loom);
     }
@@ -320,7 +322,7 @@ public class MultiModExtension {
         if (common != null) {
             includeProject(target, common);
         }
-        trySetupPublishing(target, "fabric", "fabric", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
+        trySetupPublishing("fabric", "fabric", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
 
         FabricApiExtension fabricApi = target.getExtensions().getByType(FabricApiExtension.class);
         action.execute(new LoomAndFabricApiConfigurer() {
@@ -371,7 +373,7 @@ public class MultiModExtension {
         if (common != null) {
             includeProject(target, common);
         }
-        trySetupPublishing(target, "neoforge", "neoforge", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
+        trySetupPublishing("neoforge", "neoforge", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
 
         action.execute(neoForge);
     }

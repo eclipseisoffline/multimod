@@ -19,6 +19,8 @@ public class ModPublishingSettings {
     private final ModrinthOptions modrinth;
     private final GithubOptions github;
 
+    public final Property<Boolean> makePublishTaskDepend;
+
     private boolean shouldConfigureModrinth;
     private boolean shouldConfigureGithub;
 
@@ -27,6 +29,9 @@ public class ModPublishingSettings {
         base = factory.newInstance(PublishOptions.class);
         modrinth = factory.newInstance(ModrinthOptions.class);
         github = factory.newInstance(GithubOptions.class);
+
+        makePublishTaskDepend = factory.property(Boolean.class).convention(true);
+        parent.ifPresent(p -> makePublishTaskDepend.convention(p.makePublishTaskDepend));
     }
 
     public void base(Action<? super PublishOptions> action) {
