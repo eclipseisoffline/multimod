@@ -178,6 +178,7 @@ public class MultiModExtension {
         }
 
         // Java Library plugin is applied in MultiModGradlePlugin
+
         if (settings.includeCommonRepositories.get()) {
             target.getRepositories().mavenCentral();
             target.getRepositories().maven(maven -> {
@@ -193,6 +194,7 @@ public class MultiModExtension {
                 maven.setUrl("https://maven.neoforged.net/releases");
             });
         }
+        settings.projectRepositories.execute(target.getRepositories());
 
         BasePluginExtension baseExtension = target.getExtensions().getByType(BasePluginExtension.class);
         baseExtension.getArchivesName().set(getArtifactId(type));

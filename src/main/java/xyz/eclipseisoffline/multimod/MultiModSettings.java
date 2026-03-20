@@ -1,5 +1,7 @@
 package xyz.eclipseisoffline.multimod;
 
+import org.gradle.api.Action;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 
@@ -12,6 +14,8 @@ public class MultiModSettings {
     public final Property<Boolean> includeLicenseInJar;
     public final Property<Boolean> disableNeoForgeRecompilation;
 
+    Action<? super RepositoryHandler> projectRepositories = repositories -> {};
+
     public MultiModSettings(ObjectFactory factory) {
         inheritGroupAndVersionFromParent = factory.property(Boolean.class).convention(true);
         includeCommonRepositories = factory.property(Boolean.class).convention(true);
@@ -22,6 +26,14 @@ public class MultiModSettings {
         disableNeoForgeRecompilation = factory.property(Boolean.class).convention(true);
     }
 
+    public void repositories(Action<? super RepositoryHandler> action) {
+        Action<? super RepositoryHandler> previous = projectRepositories;
+        projectRepositories = repositories -> {
+            previous.execute(repositories);
+            action.execute(repositories);
+        };
+    }
+
     public void from(MultiModSettings other) {
         inheritGroupAndVersionFromParent.convention(other.inheritGroupAndVersionFromParent);
         includeCommonRepositories.convention(other.includeCommonRepositories);
@@ -30,5 +42,6 @@ public class MultiModSettings {
         configureResources.convention(other.configureResources);
         includeLicenseInJar.convention(other.includeLicenseInJar);
         disableNeoForgeRecompilation.convention(other.disableNeoForgeRecompilation);
+        repositories(other.projectRepositories);
     }
 }
