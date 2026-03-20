@@ -19,7 +19,6 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.BasePluginExtension;
-import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -57,6 +56,8 @@ public class MultiModExtension {
     public final Property<Dependency> fabricLoader;
     public final Property<Dependency> fabricApi;
 
+    public final MultiModDependencies multiModDependencies;
+
     public final Property<String> neoForgeVersion;
     public final Property<String> supportedNeoForgeVersions;
 
@@ -86,6 +87,8 @@ public class MultiModExtension {
         fabricLoader = factory.property(Dependency.class);
         fabricApi = factory.property(Dependency.class);
 
+        multiModDependencies = new MultiModDependencies(target);
+
         neoForgeVersion = factory.property(String.class);
         supportedNeoForgeVersions = factory.property(String.class);
 
@@ -105,6 +108,8 @@ public class MultiModExtension {
 
             fabricLoader.convention(parent.get().fabricLoader);
             fabricApi.convention(parent.get().fabricApi);
+
+            multiModDependencies.from(target, parent.get().multiModDependencies);
 
             neoForgeVersion.convention(parent.get().neoForgeVersion);
             supportedNeoForgeVersions.convention(parent.get().supportedNeoForgeVersions);
@@ -140,6 +145,10 @@ public class MultiModExtension {
         action.execute(minecraft);
     }
 
+    public void sharedDependencies(Action<? super MultiModDependencies> action) {
+        action.execute(multiModDependencies);
+    }
+
     private Provider<ModPublishExtension> modPublishProvider() {
         return target.provider(() -> target.getExtensions().findByType(ModPublishExtension.class));
     }
@@ -168,7 +177,7 @@ public class MultiModExtension {
             target.setVersion(parentProject.getVersion());
         }
 
-        target.getPlugins().apply(JavaLibraryPlugin.class);
+        // Java Library plugin is applied in MultiModGradlePlugin
         if (settings.includeCommonRepositories.get()) {
             target.getRepositories().mavenCentral();
             target.getRepositories().maven(maven -> {
@@ -313,6 +322,7 @@ public class MultiModExtension {
 
         target.getDependencies().add("compileOnly", minecraft.mixin);
         target.getDependencies().add("compileOnly", minecraft.mixinExtras);
+        multiModDependencies.apply(target, "common");
 
         loom.runs(Set::clear);
 
@@ -343,6 +353,9 @@ public class MultiModExtension {
         if (common != null) {
             includeProject(target, common);
         }
+        multiModDependencies.apply(target, "fabric");
+        MultiModConfigurations.getIncludeDependencies(target).forEach(dependency -> dependencies.add("include", dependency));
+
         trySetupPublishing("fabric", "fabric", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
 
         FabricApiExtension fabricApi = target.getExtensions().getByType(FabricApiExtension.class);
@@ -394,6 +407,9 @@ public class MultiModExtension {
         if (common != null) {
             includeProject(target, common);
         }
+        multiModDependencies.apply(target, "neoforge");
+        MultiModConfigurations.getIncludeDependencies(target).forEach(dependency -> target.getDependencies().add("jarJar", dependency));
+
         trySetupPublishing("neoforge", "neoforge", target.getTasks().named("jar", Jar.class).flatMap(Jar::getArchiveFile));
 
         action.execute(neoForge);
