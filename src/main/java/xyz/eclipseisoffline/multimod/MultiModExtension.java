@@ -37,9 +37,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @SuppressWarnings("unused")
 public class MultiModExtension {
+    private static final Pattern NEO_FORGE_VERSION_PATTERN = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(-[A-z\\d.-]*)?$");
+
     private final Project target;
     private final Optional<MultiModExtension> parent;
 
@@ -120,7 +124,7 @@ public class MultiModExtension {
             description.convention("");
             archivesBaseName.convention(id);
             fabricLoader.convention(target.getDependencyFactory().create("net.fabricmc", "fabric-loader", MultiModVersions.FABRIC_LOADER_VERSION));
-            supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "]"));
+            supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "," + bumpMinecraftMinorInNeoForgeVersion(version) + ")"));
             targetJavaVersion.convention(MultiModVersions.JAVA_VERSION);
         }
     }
@@ -434,5 +438,14 @@ public class MultiModExtension {
         void loom(Action<? super LoomGradleExtensionAPI> action);
 
         void fabricApi(Action<? super FabricApiExtension> action);
+    }
+
+    private static String bumpMinecraftMinorInNeoForgeVersion(String neoForgeVersion) {
+        Matcher versionMatcher = NEO_FORGE_VERSION_PATTERN.matcher(neoForgeVersion);
+        if (versionMatcher.matches()) {
+            int minorVersion = Integer.parseInt(versionMatcher.group(2));
+            return versionMatcher.replaceFirst("$1." + (minorVersion + 1) + ".$3.$4$5");
+        }
+        throw new IllegalStateException("Unable to parse NeoForge version " + neoForgeVersion);
     }
 }

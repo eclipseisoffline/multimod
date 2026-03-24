@@ -3,7 +3,7 @@ plugins {
     `maven-publish`
 }
 
-val baseVersion = "0.2.7"
+val baseVersion = "0.2.8"
 val isDev = (System.getenv("MULTIMOD_IS_DEV")?.lowercase() ?: "true") == "true"
 
 group = "xyz.eclipseisoffline"
