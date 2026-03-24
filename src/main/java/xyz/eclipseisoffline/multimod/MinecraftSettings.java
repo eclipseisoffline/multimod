@@ -9,6 +9,7 @@ import org.gradle.api.provider.Provider;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class MinecraftSettings {
     private static final Pattern MINECRAFT_SNAPSHOT_PATTERN = Pattern.compile("^(.+)-([A-z]+)-(\\d+)$");
@@ -35,7 +36,7 @@ public class MinecraftSettings {
         mixin.convention(project.getDependencyFactory().create("org.spongepowered", "mixin", MultiModVersions.MIXIN_VERSION));
         mixinExtras.convention(project.getDependencyFactory().create("io.github.llamalad7", "mixinextras-common", MultiModVersions.MIXIN_EXTRAS_VERSION));
 
-        supportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion));
+        supportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion).map(MinecraftSettings::normaliseMinecraftVersionForFabric));
         neoForgeSupportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]"));
     }
 
@@ -53,7 +54,9 @@ public class MinecraftSettings {
                 return ">=" + normaliseMinecraftVersionForFabric(list.getFirst()) + " <=" + normaliseMinecraftVersionForFabric(list.getLast());
             }
         }));
-        neoForgeSupportedMinecraftVersions.set(versions.map(list -> "[" + String.join(",", list) + "]"));
+        neoForgeSupportedMinecraftVersions.set(versions.map(list -> list.stream()
+                .map(supportedVersion -> "[" + supportedVersion + "]")
+                .collect(Collectors.joining(","))));
     }
 
     public void from(MinecraftSettings other) {
