@@ -446,6 +446,6 @@ public class MultiModExtension {
             int minorVersion = Integer.parseInt(versionMatcher.group(2));
             return versionMatcher.replaceFirst("$1." + (minorVersion + 1) + ".$3.$4$5");
         }
-        throw new IllegalStateException("Unable to parse NeoForge version " + neoForgeVersion);
+        throw new IllegalArgumentException("Unable to parse NeoForge version " + neoForgeVersion);
     }
 }
