@@ -106,7 +106,7 @@ public class MinecraftSettings {
         Matcher releaseMatcher = MINECRAFT_RELEASE_PATTERN.matcher(version);
         if (releaseMatcher.matches()) {
             String majorVersion = releaseMatcher.group(1);
-            int minorVersion = Integer.parseInt(releaseMatcher.group(2));
+            int minorVersion = Integer.parseInt(releaseMatcher.group(2)) + 1;
             return majorVersion + "." + minorVersion;
         }
         throw new IllegalArgumentException("Unable to parse Minecraft release version " + version);
