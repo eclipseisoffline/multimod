@@ -7,11 +7,13 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class MinecraftSettings {
+    private static final Pattern MINECRAFT_RELEASE_PATTERN = Pattern.compile("^(\\d+)\\.(\\d+)(\\.\\d+)?$");
     private static final Pattern MINECRAFT_SNAPSHOT_PATTERN = Pattern.compile("^(.+)-([A-z]+)-(\\d+)$");
 
     public final Property<Dependency> minecraft;
@@ -21,6 +23,8 @@ public class MinecraftSettings {
 
     public final Property<String> supportedMinecraftVersions;
     public final Property<String> neoForgeSupportedMinecraftVersions;
+
+    public final Property<Boolean> supportMinecraftHotfixes;
 
     public MinecraftSettings(Project project) {
         ObjectFactory factory = project.getObjects();
@@ -33,11 +37,33 @@ public class MinecraftSettings {
         supportedMinecraftVersions = factory.property(String.class);
         neoForgeSupportedMinecraftVersions = factory.property(String.class);
 
+        supportMinecraftHotfixes = factory.property(Boolean.class);
+
         mixin.convention(project.getDependencyFactory().create("org.spongepowered", "mixin", MultiModVersions.MIXIN_VERSION));
         mixinExtras.convention(project.getDependencyFactory().create("io.github.llamalad7", "mixinextras-common", MultiModVersions.MIXIN_EXTRAS_VERSION));
 
-        supportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion).map(MinecraftSettings::normaliseMinecraftVersionForFabric));
-        neoForgeSupportedMinecraftVersions.convention(minecraft.map(Dependency::getVersion).map(version -> "[" + version + "]"));
+        supportedMinecraftVersions.convention(minecraft
+                .map(Dependency::getVersion)
+                .map(version -> {
+                    if (supportMinecraftHotfixes.getOrElse(false)) {
+                        return getMinecraftRelease(version)
+                                .map(release -> "~" + release)
+                                .orElseGet(() -> normaliseMinecraftVersionForFabric(version));
+                    }
+                    return normaliseMinecraftVersionForFabric(version);
+                }));
+        neoForgeSupportedMinecraftVersions.convention(minecraft
+                .map(Dependency::getVersion)
+                .map(version -> {
+                    if (supportMinecraftHotfixes.getOrElse(false)) {
+                        return getMinecraftRelease(version)
+                                .map(release -> "[" + release + ", " + bumpMinorMinecraftRelease(release) + ")")
+                                .orElseGet(() -> "[" + version + "]");
+                    }
+                    return "[" + version + "]";
+                }));
+
+        supportMinecraftHotfixes.convention(true);
     }
 
     public void supported(Provider<String> versions) {
@@ -65,6 +91,25 @@ public class MinecraftSettings {
         mixinExtras.convention(other.mixinExtras);
         supportedMinecraftVersions.convention(other.supportedMinecraftVersions);
         neoForgeSupportedMinecraftVersions.convention(other.neoForgeSupportedMinecraftVersions);
+        supportMinecraftHotfixes.convention(other.supportMinecraftHotfixes);
+    }
+
+    private static Optional<String> getMinecraftRelease(String version) {
+        Matcher releaseMatcher = MINECRAFT_RELEASE_PATTERN.matcher(version);
+        if (releaseMatcher.matches()) {
+            return Optional.of(releaseMatcher.group(1));
+        }
+        return Optional.empty();
+    }
+
+    private static String bumpMinorMinecraftRelease(String version) {
+        Matcher releaseMatcher = MINECRAFT_RELEASE_PATTERN.matcher(version);
+        if (releaseMatcher.matches()) {
+            String majorVersion = releaseMatcher.group(1);
+            int minorVersion = Integer.parseInt(releaseMatcher.group(2));
+            return majorVersion + "." + minorVersion;
+        }
+        throw new IllegalArgumentException("Unable to parse Minecraft release version " + version);
     }
 
     private static String normaliseMinecraftVersionForFabric(String version) {
