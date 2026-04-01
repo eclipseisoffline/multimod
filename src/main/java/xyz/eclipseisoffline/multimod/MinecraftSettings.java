@@ -97,7 +97,7 @@ public class MinecraftSettings {
     private static Optional<String> getMinecraftRelease(String version) {
         Matcher releaseMatcher = MINECRAFT_RELEASE_PATTERN.matcher(version);
         if (releaseMatcher.matches()) {
-            return Optional.of(releaseMatcher.group(1));
+            return Optional.of(releaseMatcher.group(1) + "." + releaseMatcher.group(2));
         }
         return Optional.empty();
     }
