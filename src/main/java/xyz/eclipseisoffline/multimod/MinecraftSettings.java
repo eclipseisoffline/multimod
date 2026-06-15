@@ -39,7 +39,7 @@ public class MinecraftSettings {
 
         supportMinecraftHotfixes = factory.property(Boolean.class);
 
-        mixin.convention(project.getDependencyFactory().create("org.spongepowered", "mixin", MultiModVersions.MIXIN_VERSION));
+        mixin.convention(project.getDependencyFactory().create("net.fabricmc", "sponge-mixin", MultiModVersions.MIXIN_VERSION));
         mixinExtras.convention(project.getDependencyFactory().create("io.github.llamalad7", "mixinextras-common", MultiModVersions.MIXIN_EXTRAS_VERSION));
 
         supportedMinecraftVersions.convention(minecraft

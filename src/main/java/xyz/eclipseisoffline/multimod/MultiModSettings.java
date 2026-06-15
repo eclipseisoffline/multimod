@@ -14,7 +14,7 @@ public class MultiModSettings {
     public final Property<Boolean> includeLicenseInJar;
     public final Property<Boolean> disableNeoForgeRecompilation;
 
-    Action<? super RepositoryHandler> projectRepositories = repositories -> {};
+    Action<? super RepositoryHandler> projectRepositories = _ -> {};
 
     public MultiModSettings(ObjectFactory factory) {
         inheritGroupAndVersionFromParent = factory.property(Boolean.class).convention(true);
