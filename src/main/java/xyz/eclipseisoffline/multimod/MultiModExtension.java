@@ -124,7 +124,7 @@ public class MultiModExtension {
             description.convention("");
             archivesBaseName.convention(id);
             fabricLoader.convention(target.getDependencyFactory().create("net.fabricmc", "fabric-loader", MultiModVersions.FABRIC_LOADER_VERSION));
-            supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "," + bumpMinecraftMinorInNeoForgeVersion(version) + ")"));
+            supportedNeoForgeVersions.convention(neoForgeVersion.map(version -> "[" + version + "," + bumpMinecraftMinorInNeoForgeVersion(target, version) + ")"));
             targetJavaVersion.convention(MultiModVersions.JAVA_VERSION);
         }
     }
@@ -440,12 +440,13 @@ public class MultiModExtension {
         void fabricApi(Action<? super FabricApiExtension> action);
     }
 
-    private static String bumpMinecraftMinorInNeoForgeVersion(String neoForgeVersion) {
+    private static String bumpMinecraftMinorInNeoForgeVersion(Project target, String neoForgeVersion) {
         Matcher versionMatcher = NEO_FORGE_VERSION_PATTERN.matcher(neoForgeVersion);
         if (versionMatcher.matches()) {
             int minorVersion = Integer.parseInt(versionMatcher.group(2));
             return versionMatcher.replaceFirst("$1." + (minorVersion + 1) + ".$3.$4$5");
         }
-        throw new IllegalArgumentException("Unable to parse NeoForge version " + neoForgeVersion);
+        target.getLogger().warn("Unable to parse NeoForge version {}", neoForgeVersion);
+        return neoForgeVersion;
     }
 }
