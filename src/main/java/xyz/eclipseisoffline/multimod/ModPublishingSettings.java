@@ -116,6 +116,7 @@ public class ModPublishingSettings {
         setIfPresent(destination.getProjectId(), source.getProjectId());
         setIfPresent(destination.getMinecraftVersions(), source.getMinecraftVersions());
         setIfPresent(destination.getFeatured(), source.getFeatured());
+        setIfPresent(destination.getEnvironment(), source.getEnvironment());
         setIfPresent(destination.getProjectDescription(), source.getProjectDescription());
         setIfPresent(destination.getApiEndpoint(), source.getApiEndpoint());
     }
