@@ -2,8 +2,6 @@ package xyz.eclipseisoffline.multimod;
 
 import me.modmuss50.mpp.ModPublishExtension;
 import me.modmuss50.mpp.MppPlugin;
-import me.modmuss50.mpp.platforms.github.GithubOptions;
-import me.modmuss50.mpp.platforms.modrinth.ModrinthOptions;
 import net.fabricmc.loom.LoomNoRemapGradlePlugin;
 import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.fabricmc.loom.api.fabricapi.FabricApiExtension;
@@ -33,8 +31,6 @@ import org.gradle.jvm.tasks.Jar;
 import org.gradle.language.jvm.tasks.ProcessResources;
 import org.jspecify.annotations.Nullable;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -65,6 +61,7 @@ public class MultiModExtension {
     public final Property<String> neoForgeVersion;
     public final Property<String> supportedNeoForgeVersions;
 
+    public final MultiModResourceConfiguration resourceConfiguration;
     public final ModPublishingSettings modPublishingSettings;
 
     public final Property<Integer> targetJavaVersion;
@@ -96,6 +93,7 @@ public class MultiModExtension {
         neoForgeVersion = factory.property(String.class);
         supportedNeoForgeVersions = factory.property(String.class);
 
+        resourceConfiguration = new MultiModResourceConfiguration(target, this, factory);
         modPublishingSettings = new ModPublishingSettings(factory, parent.map(parent -> parent.modPublishingSettings));
 
         targetJavaVersion = factory.property(Integer.class);
@@ -117,6 +115,8 @@ public class MultiModExtension {
 
             neoForgeVersion.convention(parent.get().neoForgeVersion);
             supportedNeoForgeVersions.convention(parent.get().supportedNeoForgeVersions);
+
+            resourceConfiguration.from(parent.get().resourceConfiguration);
 
             targetJavaVersion.convention(parent.get().targetJavaVersion);
         } else {
@@ -159,6 +159,10 @@ public class MultiModExtension {
 
     public void publishing(Action<? super RepositoryHandler> action) {
         publishingSettings = Optional.of(action);
+    }
+
+    public void resourceConfiguration(Action<? super MultiModResourceConfiguration> action) {
+        action.execute(resourceConfiguration);
     }
 
     public void modPublishing(Action<? super ModPublishingSettings> action) {
@@ -216,37 +220,7 @@ public class MultiModExtension {
 
         TaskContainer tasks = target.getTasks();
         if (settings.configureResources.get()) {
-            tasks.withType(ProcessResources.class, resources -> {
-                resources.getInputs().property("mod_id", id.getOrElse(""));
-                resources.getInputs().property("mod_name", name.getOrElse(""));
-                resources.getInputs().property("mod_description", description.getOrElse(""));
-                resources.getInputs().property("version", target.getVersion());
-                resources.getInputs().property("minecraft_version", minecraft.supportedMinecraftVersions.getOrElse(""));
-                resources.getInputs().property("neoforge_minecraft_version", minecraft.neoForgeSupportedMinecraftVersions.getOrElse(""));
-                resources.getInputs().property("neoforge_version", supportedNeoForgeVersions.getOrElse(""));
-                resources.getInputs().property("fabric_loader_version", fabricLoader.map(Dependency::getVersion).getOrElse(""));
-                resources.getInputs().property("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse(""));
-                resources.getInputs().property("modrinth_id", modPublishingSettings.resolveModrinthProperty(ModrinthOptions::getProjectId).getOrElse(""));
-                resources.getInputs().property("github_repository", modPublishingSettings.resolveGithubProperty(GithubOptions::getRepository).getOrElse(""));
-
-                resources.setFilteringCharset("UTF-8");
-
-                resources.filesMatching(List.of("fabric.mod.json", "META-INF/neoforge.mods.toml"), details -> {
-                    details.expand(Map.ofEntries(
-                            Map.entry("mod_id", id.getOrElse("")),
-                            Map.entry("mod_name", name.getOrElse("")),
-                            Map.entry("mod_description", description.getOrElse("")),
-                            Map.entry("version", target.getVersion()),
-                            Map.entry("minecraft_version", minecraft.supportedMinecraftVersions.getOrElse("")),
-                            Map.entry("neoforge_minecraft_version", minecraft.neoForgeSupportedMinecraftVersions.getOrElse("")),
-                            Map.entry("neoforge_version", supportedNeoForgeVersions.getOrElse("")),
-                            Map.entry("fabric_loader_version", fabricLoader.map(Dependency::getVersion).getOrElse("")),
-                            Map.entry("fabric_api_version", fabricApi.map(Dependency::getVersion).getOrElse("")),
-                            Map.entry("modrinth_id", modPublishingSettings.resolveModrinthProperty(ModrinthOptions::getProjectId).getOrElse("")),
-                            Map.entry("github_repository", modPublishingSettings.resolveGithubProperty(GithubOptions::getRepository).getOrElse(""))
-                    ));
-                });
-            });
+            tasks.withType(ProcessResources.class, resourceConfiguration::apply);
         }
 
         if (settings.setJavaVersion.get()) {
